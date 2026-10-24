@@ -127,7 +127,7 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
             className="grid gap-4"
             onSubmit={(e) => {
               e.preventDefault()
-              const amount = draft.varies ? null : parseAmount(draft.amount)
+              const amount = draft.varies ? null : parseAmount(draft.amount, pocket.currency)
               // Problems show inside the form, next to Save, rather than in a toast that leaves.
               if (!draft.varies && amount === null) return setError(t('badAmount'))
               if (!draft.categoryId) return setError(t('pickCategory'))

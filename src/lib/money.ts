@@ -2,12 +2,18 @@
 
 import { locales } from './i18n.ts'
 
+const currencyStyle = (currency: string) => ({ style: 'currency', currency, currencyDisplay: 'narrowSymbol' }) as const
+
+/** The decimals an amount in `currency` shows: its own (JPY 0, USD 2, KWD 3), at most 2. */
+const shownDigits = (currency: string) =>
+  // Capped at 2 because amounts are integer hundredths (ADR 0001).
+  Math.min(2, new Intl.NumberFormat('en', currencyStyle(currency)).resolvedOptions().maximumFractionDigits ?? 2)
+
 /** Format hundredths in `currency` for an Intl locale tag such as 'th-TH' or 'en-GB'. */
 export function formatMoney(hundredths: number, currency: string, locale: string, opts: { sign?: boolean } = {}) {
   const abs = Math.abs(hundredths)
-  const style = { style: 'currency', currency, currencyDisplay: 'narrowSymbol' } as const
-  // The currency's own decimals (JPY 0, USD 2, KWD 3), capped at the 2 that hundredths can hold.
-  const digits = Math.min(2, new Intl.NumberFormat(locale, style).resolvedOptions().maximumFractionDigits ?? 2)
+  const style = currencyStyle(currency)
+  const digits = shownDigits(currency)
   const n = new Intl.NumberFormat(locale, {
     ...style,
     minimumFractionDigits: abs % 100 === 0 ? 0 : digits,
@@ -45,15 +51,17 @@ function isLetterSymbol(s: string) {
   return letterSymbols.has(s.toUpperCase())
 }
 
-/** Parse a typed amount, allowing simple sums like "120+45+30". Returns hundredths, or null if invalid. */
-export function parseAmount(input: string): number | null {
+/** Parse a typed amount in `currency`, allowing simple sums like "120+45+30". Returns hundredths, or null if invalid. */
+export function parseAmount(input: string, currency: string): number | null {
   // Symbols ($, ฿) may go anywhere; letters only as a currency code or code-style symbol at either end.
   const clean = input
     .replace(/[,\s]/g, '')
     .replace(/^\p{L}+\p{Sc}?|\p{L}+\p{Sc}?$/gu, (s) => (isLetterSymbol(s) ? '' : s))
     .replace(/\p{Sc}/gu, '')
   if (!/^\d+(\.\d{1,2})?(\+\d+(\.\d{1,2})?)*$/.test(clean)) return null
-  const hundredths = clean.split('+').reduce((sum, p) => sum + Math.round(Number(p) * 100), 0)
+  // Rounded to what the currency shows (¥12.5 is ¥13), so the stored amount is the shown one.
+  const step = 10 ** (2 - shownDigits(currency))
+  const hundredths = Math.round(clean.split('+').reduce((sum, p) => sum + Math.round(Number(p) * 100), 0) / step) * step
   return hundredths > 0 ? hundredths : null
 }
 

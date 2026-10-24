@@ -128,7 +128,7 @@ export function PocketPlan({ pocket }: { pocket: Shell['pockets'][number] }) {
               className="grid gap-4"
               onSubmit={async (e) => {
                 e.preventDefault()
-                const amount = editing.limitType === 'none' ? 0 : parseAmount(editing.amount)
+                const amount = editing.limitType === 'none' ? 0 : parseAmount(editing.amount, pocket.currency)
                 // Next to the field, not in a toast that leaves.
                 if (amount === null || (amount <= 0 && editing.limitType !== 'none')) return setError(t('badAmount'))
                 setError('')
