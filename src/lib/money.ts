@@ -1,5 +1,7 @@
 // Pure money logic. Amounts are integer hundredths in the pocket's ISO 4217 currency, never converted.
 
+import { locales } from './i18n.ts'
+
 /** Format hundredths in `currency` for an Intl locale tag such as 'th-TH' or 'en-GB'. */
 export function formatMoney(hundredths: number, currency: string, locale: string, opts: { sign?: boolean } = {}) {
   const abs = Math.abs(hundredths)
@@ -19,13 +21,12 @@ let letterSymbols: Set<string> | undefined
 
 /** ISO codes (USD, CHF) and code-style symbols (US$, HK$) for every currency the platform knows. */
 function isLetterSymbol(s: string) {
-  // shortcut: code-style symbols come from the shipped locales only, add new locales' tags when they ship.
+  // Code-style symbols as each shipped language writes them.
   letterSymbols ??= new Set(
     Intl.supportedValuesOf('currency').flatMap((currency) => [
       currency,
-      ...['en-GB', 'th-TH'].map(
-        (locale) =>
-          new Intl.NumberFormat(locale, { style: 'currency', currency }).formatToParts(0).find((p) => p.type === 'currency')!.value,
+      ...Object.values(locales).map(
+        ({ tag }) => new Intl.NumberFormat(tag, { style: 'currency', currency }).formatToParts(0).find((p) => p.type === 'currency')!.value,
       ),
     ]),
   )

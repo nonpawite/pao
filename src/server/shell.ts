@@ -8,6 +8,7 @@ import { bankAccount, entry, pocket, pocketMember, user } from '#/db/schema'
 import { auth } from '#/lib/auth'
 import { addDays, cycleFor } from '#/lib/budget'
 import { isOwed } from '#/lib/bills'
+import { localeCodes, pickLocale } from '#/lib/i18n'
 import { activePocket, pocketBills, pocketCategories, pocketEntries, requirePocket, requireUser, todayISO } from './session'
 import { getRequestHeaders } from '@tanstack/react-start/server'
 
@@ -109,7 +110,7 @@ export const getShell = createServerFn({ method: 'GET' }).handler(async () => {
       id: u.id,
       name: u.name,
       email: u.email,
-      locale: (u as { locale?: string }).locale === 'th' ? 'th' : 'en',
+      locale: pickLocale([(u as { locale?: string }).locale ?? '']),
       weekStart: (u as { weekStart?: number }).weekStart === 1 ? 1 : 0,
     } as const,
     activePocketId: active.id,
@@ -129,7 +130,7 @@ export const setActivePocket = createServerFn({ method: 'POST' })
   })
 
 export const setLocale = createServerFn({ method: 'POST' })
-  .validator(z.object({ locale: z.enum(['en', 'th']) }))
+  .validator(z.object({ locale: z.enum(localeCodes) }))
   .handler(async ({ data }) => {
     const u = await requireUser()
     await db.update(user).set({ locale: data.locale }).where(eq(user.id, u.id))

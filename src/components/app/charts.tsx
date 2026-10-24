@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import type { PointerEvent, ReactNode } from 'react'
 
 import { addDays, formatBaht } from '#/lib/budget'
+import { monthNames } from '#/lib/i18n'
 import { cn } from '#/lib/utils'
 import { useActivePocket, useShell, useT } from './context'
 import { DotsThree } from '@phosphor-icons/react'
@@ -400,9 +401,9 @@ type Bar = { start: string; spent: number; current: boolean; hasData: boolean }
  * The current cycle is partial: a dashed outline shows where it lands at this pace.
  */
 export function CycleBars({ bars, cycle, className }: { bars: Bar[]; cycle: { dayIndex: number; length: number }; className?: string }) {
-  const { t, day } = useT()
+  const { t, locale } = useT()
   // A cycle like 25 Sep – 24 Oct is mostly October: label it by its middle.
-  const monthOf = (start: string) => day(addDays(start, 15)).split(' ')[1]
+  const monthOf = (start: string) => monthNames(locale)[Number(addDays(start, 15).slice(5, 7)) - 1]
   const first = bars.findIndex((b) => b.hasData || b.current)
   const shown = bars.slice(first)
   const projected = (b: Bar) => (b.current ? Math.round((b.spent / cycle.dayIndex) * cycle.length) : b.spent)
