@@ -10,8 +10,6 @@ import { PocketTabs } from '#/components/app/frame'
 import { BoardLine, Figure, PageTitle, Segmented, Tile, boardGrid, pageMain } from '#/components/app/kit'
 import { Picker } from '#/components/app/picker'
 import type { PickerOption } from '#/components/app/picker'
-import { totalsByCurrency } from '#/lib/money'
-import type { CurrencyTotal } from '#/lib/money'
 import { cn } from '#/lib/utils'
 import { getSpending } from '#/server/spending'
 import type { SpendingData } from '#/server/spending'
@@ -49,8 +47,6 @@ function Spending() {
   const navigate = useNavigate({ from: '/spending' })
   const { t, day, range } = useT()
   const { money } = useMoney()
-  // Each currency keeps its own figure: ฿13,788 · ¥4,200, never a sum (ADR 0001).
-  const amounts = (totals: CurrencyTotal[], sign?: boolean) => totals.map((c) => money(c.total, { currency: c.currency, sign })).join(' · ')
   // Any filter change starts the list from the top again.
   const set = (patch: Partial<Search>) => navigate({ search: (prev) => ({ ...prev, ...patch, n: PAGE }), replace: true, resetScroll: false })
   const clear = () => navigate({ search: {}, replace: true, resetScroll: false })
@@ -60,7 +56,6 @@ function Spending() {
     data.from && data.to ? range(data.from, data.to) : data.from ? `${t('from')} ${day(data.from)}` : data.to ? `${t('to')} ${day(data.to)}` : t('periodAll')
   const count = data.totals.count === 1 ? t('entryOne') : t('entriesN', { n: data.totals.count })
   const pockets = s.pocket === 'all' ? new Map(data.pockets.map((p) => [p.id, p])) : undefined
-  const order = data.totals.spent.map((c) => c.currency)
 
   return (
     <main className={pageMain}>
@@ -77,7 +72,13 @@ function Spending() {
             {data.totals.spent.map((c) => (
               <Figure key={c.currency} text={money(c.total, { currency: c.currency })} className="text-[30px] lg:text-[32px]" />
             ))}
-            {data.totals.earned.length > 0 && <BoardLine left={t('earned')} right={<span className="text-ok-text">{amounts(data.totals.earned, true)}</span>} />}
+            {data.totals.earned.length > 0 && (
+              <BoardLine
+                left={t('earned')}
+                // Each currency keeps its own figure, never a sum (ADR 0001).
+                right={<span className="text-ok-text">{data.totals.earned.map((c) => money(c.total, { currency: c.currency, sign: true })).join(' · ')}</span>}
+              />
+            )}
           </Tile>
           {data.byCategory.map((g) => (
             // A second currency gets its own breakdown, named by its code.
@@ -93,20 +94,7 @@ function Spending() {
 
         <Tile title={t('entries')} aside={count} className="lg:col-span-4 lg:row-start-2">
           {data.entries.length ? (
-            <EntryRows
-              entries={data.entries}
-              today={data.today}
-              who={data.members.length > 1}
-              pockets={pockets}
-              grouped
-              // A day across pockets can mix currencies, so its spend is one figure per currency, in the totals' order.
-              dayAside={(d) => {
-                const spent = totalsByCurrency(
-                  data.entries.filter((e) => e.occurredOn === d && e.kind === 'expense').map((e) => ({ currency: e.currency, total: e.amount })),
-                ).sort((a, b) => order.indexOf(a.currency) - order.indexOf(b.currency))
-                return spent.length > 0 && <span>{amounts(spent)}</span>
-              }}
-            />
+            <EntryRows entries={data.entries} today={data.today} who={data.members.length > 1} pockets={pockets} grouped />
           ) : (
             <div className="grid justify-items-start gap-3 py-2">
               <span className="text-[15px] text-on-board-2">{t('noMatches')}</span>
