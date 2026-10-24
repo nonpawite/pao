@@ -39,6 +39,10 @@ export const diffDays = (from: ISODate, to: ISODate) => Math.round((toUTC(to) - 
 
 export const weekday = (date: ISODate) => new Date(toUTC(date)).getUTCDay()
 
+/** The calendar day a moment falls on in the household's time zone: APP_TZ, else UTC. */
+export const householdDay = (at: Date = new Date()): ISODate =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: process.env.APP_TZ || 'UTC' }).format(at)
+
 /** The cycle start in a given month: startDay clamped to that month's length. */
 function startIn(y: number, m: number, startDay: number): ISODate {
   return iso(y, m, Math.min(startDay, daysInMonth(y, m)))

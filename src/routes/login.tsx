@@ -53,7 +53,9 @@ function Login() {
 
   return (
     <main className="mx-auto grid min-h-dvh w-full max-w-sm content-center gap-8 px-5 py-10">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        {/* The name is the same Latin word in every language. */}
+        <p className="text-[17px] font-semibold">Pao</p>
         <button
           type="button"
           onClick={() => setLocale(other)}

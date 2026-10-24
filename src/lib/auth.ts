@@ -11,7 +11,7 @@ export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: 'pg', schema }),
   emailAndPassword: {
     enabled: true,
-    // Family instance: turn sign-up off once everyone has an account.
+    // Household instance: turn sign-up off once everyone has an account.
     disableSignUp: process.env.ALLOW_SIGNUP === 'false',
   },
   user: {

@@ -40,7 +40,9 @@ services:
       # from the internet, strangers can sign up: set "false" before you expose it.
       # Set to "false" once every household member has an account, then run `docker compose up -d` again.
       ALLOW_SIGNUP: "true"
-      APP_TZ: Asia/Bangkok
+      # APP_TZ: your time zone, so "today" and daily limits turn over at your midnight. Use a name
+      # from https://en.wikipedia.org/wiki/List_of_tz_database_time_zones, e.g. Europe/London. Unset means UTC.
+      APP_TZ: UTC
     volumes:
       # The auth secret the app creates on first start.
       - app-data:/app/data
