@@ -17,6 +17,14 @@ export function formatMoney(hundredths: number, currency: string, locale: string
   return `${sign}${n}`
 }
 
+/** Whole units with thousands as K, for chart axes: ฿1,284 → ฿1.3K, ¥850. */
+export function compactMoney(hundredths: number, currency: string, locale: string) {
+  const units = hundredths / 100
+  const n = units >= 1000 ? `${(units / 1000).toFixed(units >= 10000 ? 0 : 1).replace(/\.0$/, '')}K` : `${Math.round(units)}`
+  // The symbol sits where formatMoney puts it (฿0, CHF 0).
+  return formatMoney(0, currency, locale).replace('0', n)
+}
+
 /** The symbol formatMoney writes for `currency`: ฿, $, ¥, CHF. */
 export const currencySymbol = (currency: string, locale: string) =>
   new Intl.NumberFormat(locale, { style: 'currency', currency, currencyDisplay: 'narrowSymbol' }).formatToParts(0).find((p) => p.type === 'currency')!.value
