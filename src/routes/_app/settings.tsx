@@ -5,9 +5,11 @@ import type { ReactNode } from 'react'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-import { useShell, useT } from '#/components/app/context'
+import { pickerClass } from '#/components/app/bill-form'
+import { useMoney, useShell, useT } from '#/components/app/context'
 import { PocketPlan } from '#/components/app/pocket-plan'
 import { Avatar, Group, PageTitle, Row, Segmented, onRadioKeys, pageMain } from '#/components/app/kit'
+import { Picker } from '#/components/app/picker'
 import { Button } from '#/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/components/ui/dialog'
 import { Input } from '#/components/ui/input'
@@ -17,6 +19,7 @@ import { pocketBg, pocketColors } from '#/lib/colors'
 import type { PocketColor } from '#/lib/colors'
 import { localeCodes, locales } from '#/lib/i18n'
 import type { MessageKey } from '#/lib/i18n'
+import { currencies } from '#/lib/money'
 import { cn } from '#/lib/utils'
 import {
   addBankAccount,
@@ -29,6 +32,7 @@ import {
   removeMember,
   renameUser,
   restoreBankAccount,
+  setPocketCurrency,
   updatePocket,
 } from '#/server/settings'
 import { setLocale, setWeekStart } from '#/server/shell'
@@ -509,6 +513,8 @@ function PocketEditor({ pocket }: { pocket: Shell['pockets'][number] }) {
         </>
       )}
 
+      <PocketCurrency pocket={pocket} />
+
       <PocketPlan pocket={pocket} />
 
       {shared && (
@@ -629,6 +635,51 @@ function PocketEditor({ pocket }: { pocket: Shell['pockets'][number] }) {
             {t('deletePocket')}
           </button>
         ))}
+    </div>
+  )
+}
+
+/** The pocket's currency. Switching relabels every amount and converts none, so it asks first. The owner edits; members read. */
+function PocketCurrency({ pocket }: { pocket: Shell['pockets'][number] }) {
+  const run = useRun()
+  const { t, locale } = useT()
+  const [next, setNext] = useState<string | null>(null)
+  const from = useMoney(pocket.currency)
+  const to = useMoney(next ?? pocket.currency)
+  const names = new Intl.DisplayNames([locales[locale].tag], { type: 'currency' })
+  return (
+    <div className="grid gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <label htmlFor={`currency-${pocket.id}`} className="caps text-[12px] text-ink-2">
+          {t('currency')}
+        </label>
+        <Picker
+          id={`currency-${pocket.id}`}
+          label={t('currency')}
+          disabled={pocket.role !== 'owner'}
+          value={pocket.currency}
+          options={currencies.map((c) => ({ value: c, label: <span className="truncate">{`${c} · ${names.of(c)}`}</span> }))}
+          display={pocket.currency}
+          onChange={(c) => setNext(c === pocket.currency ? null : c)}
+          className={cn(pickerClass, 'shrink-0')}
+        />
+      </div>
+      {next && (
+        <div role="alert" className="grid gap-3 rounded-sm bg-ahead/12 p-3">
+          <p className="text-[15px]">
+            <b className="font-semibold">{t('changeCurrencyTitle', { currency: next })}</b>{' '}
+            {t('changeCurrencyHint', { from: from.money(50_000), to: to.money(50_000) })}
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="secondary" onClick={() => setNext(null)}>
+              {t('cancel')}
+            </Button>
+            <Button onClick={async () => (await run(() => setPocketCurrency({ data: { pocketId: pocket.id, currency: next } }))) && setNext(null)}>
+              {t('changeCurrency')}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

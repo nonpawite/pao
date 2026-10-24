@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { db } from '#/db/index'
 import { bankAccount, pocket, pocketMember, user } from '#/db/schema'
 import { pocketColors } from '#/lib/colors'
+import { defaultCurrency, isCurrency } from '#/lib/money'
 import { requireOwner, requirePocket, requireUser } from './session'
 
 const name = z.string().trim().min(1).max(40)
@@ -64,9 +65,14 @@ export const createPocket = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const u = await requireUser()
     const id = await db.transaction(async (tx) => {
+      // A new pocket starts in its creator's personal-pocket currency.
+      const [own] = await tx
+        .select({ currency: pocket.currency })
+        .from(pocket)
+        .where(and(eq(pocket.createdBy, u.id), eq(pocket.kind, 'personal')))
       const [p] = await tx
         .insert(pocket)
-        .values({ ...data, kind: 'shared', createdBy: u.id })
+        .values({ ...data, kind: 'shared', currency: own?.currency ?? defaultCurrency(process.env.DEFAULT_CURRENCY), createdBy: u.id })
         .returning({ id: pocket.id })
       await tx.insert(pocketMember).values({ pocketId: p.id, userId: u.id, role: 'owner' })
       return p.id
@@ -81,6 +87,15 @@ export const updatePocket = createServerFn({ method: 'POST' })
     const u = await requireUser()
     await requireOwner(u.id, data.pocketId)
     await db.update(pocket).set({ name: data.name, color: data.color }).where(eq(pocket.id, data.pocketId))
+  })
+
+/** Relabels the pocket's amounts in another currency. Stored amounts stay as they are: nothing is converted (ADR 0001). */
+export const setPocketCurrency = createServerFn({ method: 'POST' })
+  .validator(z.object({ pocketId: z.uuid(), currency: z.string().refine(isCurrency, 'Not an ISO 4217 currency code') }))
+  .handler(async ({ data }) => {
+    const u = await requireUser()
+    await requireOwner(u.id, data.pocketId)
+    await db.update(pocket).set({ currency: data.currency }).where(eq(pocket.id, data.pocketId))
   })
 
 /** Adds someone who already has an account on this server; `found: false` when nobody uses that email. */

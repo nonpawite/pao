@@ -4,12 +4,11 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 
 import { BillRows } from '#/components/app/bills'
-import { useActivePocket, useShell, useT } from '#/components/app/context'
+import { useActivePocket, useMoney, useShell, useT } from '#/components/app/context'
 import { EntryRows } from '#/components/app/entry-list'
 import { PocketChip, PocketTabs } from '#/components/app/frame'
 import { Avatar, Board, BoardLine, CategoryGlyph, DayStrip, Figure, Flap, LimitBar, PageTitle, Status, Tile, boardGrid, glyphFor, pageMain } from '#/components/app/kit'
 import { isOwed } from '#/lib/bills'
-import { formatBaht } from '#/lib/budget'
 import type { LimitState } from '#/lib/budget'
 import { cn } from '#/lib/utils'
 import { getToday } from '#/server/today'
@@ -24,6 +23,7 @@ function Today() {
   const data = Route.useLoaderData()
   const shell = useShell()
   const { t, day } = useT()
+  const { money } = useMoney()
   // With no limits and no income the cycle panel would only repeat the hero's spent figure.
   const showCycle = data.daily.length > 0 || data.cycleLimit > 0 || data.earned > 0 || data.setAside > 0
   const shared = data.kind === 'shared' && data.members.length > 0
@@ -48,7 +48,8 @@ function Today() {
       {data.recapFor && <RecapBanner start={data.recapFor.start} end={data.recapFor.end} />}
 
       <div className={boardGrid}>
-        <Board className="content-start lg:col-span-4 lg:p-6">
+        {/* A container, so the hero's flap tiles shrink to fit a narrow board. */}
+        <Board className="@container content-start lg:col-span-4 lg:p-6">
           <BoardBody data={data} />
         </Board>
 
@@ -89,7 +90,7 @@ function Today() {
                 <div key={m.id} className="flex items-center gap-3 border-t border-board-line py-3">
                   <Avatar name={m.name} className="bg-flap text-on-board" />
                   <span className="min-w-0 flex-1 truncate">{m.id === shell.user.id ? t('you') : m.name}</span>
-                  <span className="font-board text-[16px] font-semibold">{formatBaht(m.spent)}</span>
+                  <span className="font-board text-[16px] font-semibold">{money(m.spent)}</span>
                 </div>
               ))}
             </div>
@@ -103,6 +104,7 @@ function Today() {
 /** What the hero board says: today's first per-day limit, else what is left this cycle. */
 function BoardBody({ data }: { data: TodayData }) {
   const { t, range } = useT()
+  const { money } = useMoney()
   const pocket = useActivePocket()
   const first = data.daily[0]
 
@@ -115,7 +117,7 @@ function BoardBody({ data }: { data: TodayData }) {
           left={
             <span className="flex items-center gap-2">
               {G && <G className="size-4 shrink-0 text-ink-2" />}
-              {first.name} · {t('aDay', { amount: formatBaht(first.limit) })}
+              {first.name} · {t('aDay', { amount: money(first.limit) })}
             </span>
           }
           right={range(data.cycle.start, data.cycle.end)}
@@ -125,7 +127,7 @@ function BoardBody({ data }: { data: TodayData }) {
           params={{ categoryId: first.id }}
           className="mt-4 flex flex-wrap items-end gap-x-4 gap-y-2 transition-opacity hover:opacity-80"
         >
-          <Flap text={formatBaht(Math.abs(first.left))} className="text-[46px] lg:text-[64px]" />
+          <Flap text={money(Math.abs(first.left))} className="text-[46px] lg:text-[64px]" />
           <span className={cn('pb-1 text-[15px] leading-tight', over ? 'text-over-text' : 'text-ink-2')}>
             {over ? t('over') : t('leftToday')}
           </span>
@@ -133,7 +135,7 @@ function BoardBody({ data }: { data: TodayData }) {
         <DayStrip days={first.strip} onBoard className="mt-5" />
         <BoardLine
           className="mt-2.5"
-          left={t('spentToday', { amount: formatBaht(first.spentToday) })}
+          left={t('spentToday', { amount: money(first.spentToday) })}
           right={
             <span className={cn(first.overDays > 0 && 'text-over-text')}>
               {first.overDays === 0 ? t('noDaysOver') : first.overDays === 1 ? t('oneDayOver') : t('daysOver', { n: first.overDays })}
@@ -159,7 +161,7 @@ function BoardBody({ data }: { data: TodayData }) {
         right={range(data.cycle.start, data.cycle.end)}
       />
       <div className="mt-4 flex flex-wrap items-end gap-x-4 gap-y-2">
-        <Flap text={formatBaht(hasLimits ? Math.abs(left) : data.spent)} className="text-[40px] lg:text-[56px]" />
+        <Flap text={money(hasLimits ? Math.abs(left) : data.spent)} className="text-[40px] lg:text-[56px]" />
         <span className={cn('pb-1 text-[15px] leading-tight', hasLimits && left < 0 ? 'text-over-text' : 'text-ink-2')}>
           {hasLimits ? (left < 0 ? t('over') : t('leftThisCycle')) : t('spent')}
         </span>
@@ -169,7 +171,7 @@ function BoardBody({ data }: { data: TodayData }) {
       )}
       <BoardLine
         className="mt-2.5"
-        left={hasLimits ? `${formatBaht(spentIn)} ${t('of')} ${formatBaht(data.cycleLimit)}` : ''}
+        left={hasLimits ? `${money(spentIn)} ${t('of')} ${money(data.cycleLimit)}` : ''}
         right={t('dayOf', { n: data.cycle.dayIndex, total: data.cycle.length })}
       />
     </>
@@ -179,12 +181,13 @@ function BoardBody({ data }: { data: TodayData }) {
 /** The cycle so far against what came in; the whole board opens Review. */
 function CycleBoard({ data, className }: { data: TodayData; className?: string }) {
   const { t } = useT()
+  const { money } = useMoney()
   const left = data.earned - data.spent - data.setAside
   return (
     <Link to="/review" className={cn('board grid content-start gap-4 rounded-lg p-4 transition-colors hover:bg-flap lg:p-5', className)}>
       <BoardLine left={t('thisCycle')} />
       <span className="flex flex-wrap items-end gap-x-3 gap-y-2">
-        <Figure text={formatBaht(data.spent)} className="text-[30px] lg:text-[32px]" />
+        <Figure text={money(data.spent)} className="text-[30px] lg:text-[32px]" />
         <span className="pb-1 text-[15px] leading-tight text-ink-2">{t('spent')}</span>
       </span>
       {data.earned > 0 && (
@@ -194,10 +197,10 @@ function CycleBoard({ data, className }: { data: TodayData; className?: string }
             {data.setAside > 0 && <span className="set-aside text-on-board-2" style={{ width: `${Math.min(100, (data.setAside / data.earned) * 100)}%` }} />}
           </span>
           <BoardLine
-            left={t('ofEarnedAmount', { amount: formatBaht(data.earned) })}
+            left={t('ofEarnedAmount', { amount: money(data.earned) })}
             right={
               <span className={cn(left < 0 ? 'text-over-text' : 'text-on-board')}>
-                {left < 0 ? t('amountOver', { amount: formatBaht(-left) }) : t('notSpentYetAmount', { amount: formatBaht(left) })}
+                {left < 0 ? t('amountOver', { amount: money(-left) }) : t('notSpentYetAmount', { amount: money(left) })}
               </span>
             }
           />
@@ -213,11 +216,13 @@ function CycleBoard({ data, className }: { data: TodayData; className?: string }
 }
 
 // Under 380px the status keeps only its dot (the word goes to screen readers), so the name keeps room to read.
-const limitCols = 'grid grid-cols-[minmax(0,1fr)_84px_12px] items-center gap-x-3 min-[380px]:grid-cols-[minmax(0,1fr)_88px_84px]'
+// The amount column grows past its width for a wide sign (CHF 12,345.50) and takes the room from the name.
+const limitCols = 'grid grid-cols-[minmax(0,1fr)_minmax(84px,auto)_12px] items-center gap-x-3 min-[380px]:grid-cols-[minmax(0,1fr)_minmax(88px,auto)_84px]'
 
 /** The cycle table in a panel: each category, what is left, and its status; problems first. */
 function LimitsBoard({ data, className }: { data: TodayData; className?: string }) {
   const { t } = useT()
+  const { money } = useMoney()
   return (
     <Board className={cn('content-start lg:p-5', className)}>
       <div className={cn(limitCols, 'caps pb-2.5 text-[12px] leading-4 text-on-board-2')}>
@@ -263,14 +268,14 @@ function LimitsBoard({ data, className }: { data: TodayData; className?: string 
           name={r.name}
           left={null}
           state="none"
-          sub={<span className="truncate text-[12px] text-on-board-2">{t('amountSpent', { amount: formatBaht(r.spent) })}</span>}
+          sub={<span className="truncate text-[12px] text-on-board-2">{t('amountSpent', { amount: money(r.spent) })}</span>}
         />
       ))}
 
       {data.hasCategories && (
         <div className="caps flex items-baseline justify-between border-t-2 border-board-line pt-3 text-[13px]">
           <span className="text-on-board-2">{t('spent')}</span>
-          <span className="text-[17px]">{formatBaht(data.spent)}</span>
+          <span className="text-[17px]">{money(data.spent)}</span>
         </div>
       )}
     </Board>
@@ -278,6 +283,7 @@ function LimitsBoard({ data, className }: { data: TodayData; className?: string 
 }
 
 function LimitRow({ id, name, left, state, sub, below }: { id: string; name: string; left: number | null; state: LimitState; sub?: ReactNode; below?: ReactNode }) {
+  const { money } = useMoney()
   return (
     <Link
       to="/category/$categoryId"
@@ -293,7 +299,7 @@ function LimitRow({ id, name, left, state, sub, below }: { id: string; name: str
           </span>
         </span>
         <span className={cn('text-right font-board text-[17px] font-semibold', state === 'over' && 'text-over-text', left === null && 'text-on-board-2')}>
-          {left === null ? '—' : left < 0 ? `−${formatBaht(-left)}` : formatBaht(left)}
+          {left === null ? '—' : left < 0 ? `−${money(-left)}` : money(left)}
         </span>
         <Status state={state} onBoard compact className="justify-self-end" />
       </span>
@@ -341,10 +347,11 @@ function RecapBanner({ start, end }: { start: string; end: string }) {
 /** Money held back for bills still to pay, with the hatch the bars use. */
 function SetAside({ amount, count }: { amount: number; count: number }) {
   const { t } = useT()
+  const { money } = useMoney()
   return (
     <span className="caps flex items-center gap-2 text-[11px] text-on-board-2">
       <i aria-hidden className="set-aside h-[7px] w-3.5 shrink-0" />
-      {count === 1 ? t('setAsideOne', { amount: formatBaht(amount) }) : t('setAsideBills', { amount: formatBaht(amount), n: count })}
+      {count === 1 ? t('setAsideOne', { amount: money(amount) }) : t('setAsideBills', { amount: money(amount), n: count })}
     </span>
   )
 }

@@ -7,12 +7,12 @@ import { toast } from 'sonner'
 import { Button } from '#/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/components/ui/dialog'
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from '#/components/ui/drawer'
-import { addDays, formatBaht, parseAmount } from '#/lib/budget'
+import { addDays, parseAmount } from '#/lib/budget'
 import { cn } from '#/lib/utils'
 import { addEntry, deleteEntry, getDayEntries, updateEntry } from '#/server/entries'
 import type { DayEntry } from '#/server/entries'
 import { useCategoryColor } from './charts'
-import { useShell, useT } from './context'
+import { useMoney, useShell, useT } from './context'
 import { Flap, Segmented, glyphFor } from './kit'
 
 /** An existing entry to load into the sheet as the line being edited. */
@@ -176,6 +176,9 @@ export function AddEntryForm({
   }, [shell.activePocketId])
 
   const pocket = shell.pockets.find((p) => p.id === pocketId) ?? shell.pockets[0]
+  // The sheet's pocket, which can differ from the active one.
+  // shortcut: the typed amount puts the symbol first, as both shipped languages do; follow formatToParts once one puts it after.
+  const { money, symbol } = useMoney(pocket.currency)
   const category = pocket.categories.find((c) => c.id === categoryId) ?? null
   const amount = parseAmount(amountText)
   const yesterday = addDays(shell.today, -1)
@@ -249,8 +252,8 @@ export function AddEntryForm({
       else await addEntry({ data: line.billId ? { ...data, billId: line.billId, billFor: line.billFor } : data })
       setSaid(
         line.kind === 'income'
-          ? t('savedIncome', { amount: formatBaht(line.amount) })
-          : t('saved', { amount: formatBaht(line.amount), category: catName(line.categoryId) }),
+          ? t('savedIncome', { amount: money(line.amount) })
+          : t('saved', { amount: money(line.amount), category: catName(line.categoryId) }),
       )
       setVersion((v) => v + 1)
       void router.invalidate()
@@ -410,7 +413,7 @@ export function AddEntryForm({
           {rows && <span className="shrink-0">· {rows.length === 1 ? t('lineOne') : t('lineCount', { n: rows.length })}</span>}
           <CaretDown weight="bold" className={cn('size-3 shrink-0 transition-transform motion-reduce:transition-none', batch && 'rotate-180')} />
         </span>
-        <span className={cn('shrink-0 font-board text-[17px] font-semibold', !spent && 'text-ink-2')}>{formatBaht(spent)}</span>
+        <span className={cn('shrink-0 font-board text-[17px] font-semibold', !spent && 'text-ink-2')}>{money(spent)}</span>
       </button>
 
       {batch && (
@@ -484,7 +487,7 @@ export function AddEntryForm({
                     {meta && <span className="truncate text-[12px] text-ink-2">{meta}</span>}
                   </span>
                   <span className={cn('font-board text-[16px] font-semibold', r.kind === 'income' && 'text-ok-text')}>
-                    {formatBaht(r.amount, { sign: r.kind === 'income' })}
+                    {money(r.amount, { sign: r.kind === 'income' })}
                   </span>
                 </button>
                 {opened === r.id && (
@@ -563,14 +566,14 @@ export function AddEntryForm({
           </div>
           {keypad ? (
             <output aria-live="polite" aria-label={t('amount')}>
-              <Flap text={`฿${amountText || '0'}`} dim={!amountText} className="text-[34px]" />
+              <Flap text={`${symbol}${amountText || '0'}`} dim={!amountText} className="text-[34px]" />
             </output>
           ) : (
             // The real field is invisible over the tiles, so the tiles wear its focus ring.
             <label className="relative flex min-w-24 justify-end rounded-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-4 has-[:focus-visible]:outline-[var(--focus)]">
               <span className="sr-only">{t('amount')}</span>
               <span aria-hidden>
-                <Flap text={`฿${amountText || '0'}`} dim={!amountText} className="text-[32px]" />
+                <Flap text={`${symbol}${amountText || '0'}`} dim={!amountText} className="text-[32px]" />
               </span>
               {/* The real field lies over the tiles: typing goes to it, the tiles show it. */}
               <input
@@ -598,8 +601,8 @@ export function AddEntryForm({
             <i aria-hidden className={cn('size-2 shrink-0', effect.left < 0 ? 'bg-over' : 'bg-ok')} />
             {/* A daily limit is that day's, so another day's line names it: Today's figure is not the one changing. */}
             {effect.day
-              ? t(effect.left < 0 ? 'overAfterOn' : 'leftAfterOn', { amount: formatBaht(Math.abs(effect.left)), category: effect.name, day: day(effect.day, true) })
-              : t(effect.left < 0 ? 'overAfter' : 'leftAfter', { amount: formatBaht(Math.abs(effect.left)), category: effect.name })}
+              ? t(effect.left < 0 ? 'overAfterOn' : 'leftAfterOn', { amount: money(Math.abs(effect.left)), category: effect.name, day: day(effect.day, true) })
+              : t(effect.left < 0 ? 'overAfter' : 'leftAfter', { amount: money(Math.abs(effect.left)), category: effect.name })}
           </p>
         ) : (
           said && (
@@ -674,7 +677,7 @@ export function AddEntryForm({
                   }}
                   className={cn(oneTapClass, link?.billId === b.id && chipOn)}
                 >
-                  + {b.name} <span className="font-board font-semibold">{b.varies ? t('varies') : formatBaht(b.amount ?? 0)}</span>
+                  + {b.name} <span className="font-board font-semibold">{b.varies ? t('varies') : money(b.amount ?? 0)}</span>
                 </button>
               ))}
             </div>
@@ -701,7 +704,7 @@ export function AddEntryForm({
                     onClick={() => void save({ kind: 'expense', amount: r.amount, categoryId: r.categoryId, note: r.note, bankAccountId: accountId })}
                     className={oneTapClass}
                   >
-                    + {r.note || c?.name} <span className="font-board font-semibold">{formatBaht(r.amount)}</span>
+                    + {r.note || c?.name} <span className="font-board font-semibold">{money(r.amount)}</span>
                   </button>
                 )
               })}
@@ -744,9 +747,9 @@ export function AddEntryForm({
               : !amount
                 ? t('add')
                 : kind === 'income'
-                  ? t('addIncome', { amount: formatBaht(amount) })
+                  ? t('addIncome', { amount: money(amount) })
                   : category
-                    ? t('addTo', { amount: formatBaht(amount), category: category.name })
+                    ? t('addTo', { amount: money(amount), category: category.name })
                     : t('pickCategory')}
             {!keypad && (
               <kbd aria-hidden className="rounded-xs border border-current/40 px-1.5 font-board text-[11px] font-semibold">

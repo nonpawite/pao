@@ -33,6 +33,9 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://tracker:tracker@db:5432/tracker
+      # The currency of each new member's personal pocket: an ISO 4217 code such as THB, USD, EUR or JPY.
+      # Any pocket can switch currency later in its settings. Without this line (or with an unknown code), Pao uses USD.
+      DEFAULT_CURRENCY: USD
       # While "true", anyone who can open this instance can create an account. If it is reachable
       # from the internet, strangers can sign up: set "false" before you expose it.
       # Set to "false" once every household member has an account, then run `docker compose up -d` again.

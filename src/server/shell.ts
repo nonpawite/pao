@@ -80,6 +80,7 @@ export const getShell = createServerFn({ method: 'GET' }).handler(async () => {
         name: p.name,
         color: p.color,
         kind: p.kind,
+        currency: p.currency,
         role,
         cycle,
         cycleStartDay: p.cycleStartDay,

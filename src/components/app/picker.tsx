@@ -71,7 +71,7 @@ export function Picker<T extends string | number>({
             const list = listRef.current
             ;(list?.querySelector<HTMLElement>('[aria-selected=true]') ?? list?.querySelector<HTMLElement>('[role=option]'))?.focus()
           }}
-          className="board z-50 max-h-[min(380px,var(--radix-popover-content-available-height))] min-w-[var(--radix-popover-trigger-width)] overflow-y-auto rounded-sm p-1.5 shadow-[0_16px_32px_-12px_rgb(0_0_0/0.5)] duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
+          className="board z-50 max-h-[min(380px,var(--radix-popover-content-available-height))] max-w-[var(--radix-popover-content-available-width)] min-w-[var(--radix-popover-trigger-width)] overflow-y-auto rounded-sm p-1.5 shadow-[0_16px_32px_-12px_rgb(0_0_0/0.5)] duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
         >
           <div
             ref={listRef}

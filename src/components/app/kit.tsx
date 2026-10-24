@@ -91,19 +91,23 @@ export function BoardLine({ left, right, className }: { left: ReactNode; right?:
  * Size comes from the font size of `className`.
  */
 export function Flap({ text, dim, className }: { text: string; dim?: boolean; className?: string }) {
+  // A currency sign takes one tile however many characters it has: ฿, $, US$, CHF.
+  const tiles = (text.match(/\p{L}+\p{Sc}?|./gsu) ?? []).map((ch) => ({
+    ch,
+    k: /^\d$/.test(ch) ? 'char' : /^[,.]$/.test(ch) ? 'sep' : /^\s$/.test(ch) ? 'gap' : 'sym',
+  }))
+  // The figure's width in em (tile widths from styles.css, plus the gap), so .flaps can shrink it to fit its container.
+  const width = tiles.reduce((w, { ch, k }) => w + 0.06 + (k === 'char' ? 0.84 : k === 'sep' ? 0.36 : k === 'gap' ? 0.3 : Math.max(0.62, 0.42 * ch.length + 0.16)), 0)
   return (
     <span className={cn('inline-flex', className)}>
       <span className="sr-only">{text}</span>
-      <span aria-hidden className="flaps" data-dim={dim || undefined}>
-        {[...text].map((ch, i) => {
-          const k = /[\p{L}\d]/u.test(ch) ? 'char' : /[,.]/.test(ch) ? 'sep' : ch === ' ' ? 'gap' : 'sym'
-          return (
-            // Keyed by character so a changed character remounts and flips.
-            <span key={`${i}-${ch}`} className="flap" data-k={k} style={{ '--i': i } as CSSProperties}>
-              <span>{ch}</span>
-            </span>
-          )
-        })}
+      <span aria-hidden className="flaps" data-dim={dim || undefined} style={{ '--w': width.toFixed(2) } as CSSProperties}>
+        {tiles.map(({ ch, k }, i) => (
+          // Keyed by character so a changed character remounts and flips.
+          <span key={`${i}-${ch}`} className="flap" data-k={k} style={{ '--i': i } as CSSProperties}>
+            <span>{ch}</span>
+          </span>
+        ))}
       </span>
     </span>
   )

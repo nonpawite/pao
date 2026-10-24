@@ -23,13 +23,13 @@ async function userId(email: string) {
 const ploy = await userId('demo@example.com')
 const mint = await userId('mint@example.com')
 
-// Personal pocket: payday on the 25th, the owner's example limits.
+// Personal pocket: payday on the 25th, the owner's example limits, in baht whatever DEFAULT_CURRENCY says.
 const [me] = await db
   .select({ id: pocket.id })
   .from(pocket)
   .innerJoin(pocketMember, eq(pocketMember.pocketId, pocket.id))
   .where(and(eq(pocketMember.userId, ploy), eq(pocket.kind, 'personal')))
-await db.update(pocket).set({ cycleStartDay: 25 }).where(eq(pocket.id, me.id))
+await db.update(pocket).set({ cycleStartDay: 25, currency: 'THB' }).where(eq(pocket.id, me.id))
 const limits: Record<string, ['day' | 'cycle' | 'none', number]> = {
   Food: ['day', 200],
   Gas: ['cycle', 3000],
@@ -50,7 +50,7 @@ const [main] = await db.select().from(bankAccount).where(and(eq(bankAccount.user
 // Shared pockets with Mint.
 await db.delete(pocket).where(and(eq(pocket.createdBy, ploy), eq(pocket.kind, 'shared')))
 async function shared(name: string, color: string, startDay: number, categories: Array<[string, number]>) {
-  const [p] = await db.insert(pocket).values({ name, color, kind: 'shared', cycleStartDay: startDay, createdBy: ploy }).returning()
+  const [p] = await db.insert(pocket).values({ name, color, kind: 'shared', cycleStartDay: startDay, currency: 'THB', createdBy: ploy }).returning()
   await db.insert(pocketMember).values([
     { pocketId: p.id, userId: ploy, role: 'owner' },
     { pocketId: p.id, userId: mint, role: 'member' },
