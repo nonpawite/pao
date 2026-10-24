@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react'
 
 import { formatDay, locales, translate } from '#/lib/i18n'
 import type { Locale, MessageKey } from '#/lib/i18n'
-import { currencySymbol, formatMoney } from '#/lib/money'
+import { compactMoney, currencySymbol, formatMoney } from '#/lib/money'
 import type { Shell } from '#/server/shell'
 
 const ShellContext = createContext<Shell | null>(null)
@@ -46,6 +46,7 @@ export function useMoney(currency?: string) {
   const bound = currency ?? active.currency
   return {
     money: (hundredths: number, opts: { sign?: boolean; currency?: string } = {}) => formatMoney(hundredths, opts.currency ?? bound, tag, opts),
+    compact: (hundredths: number) => compactMoney(hundredths, bound, tag),
     symbol: currencySymbol(bound, tag),
   }
 }
