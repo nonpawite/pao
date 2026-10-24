@@ -267,7 +267,7 @@ export const boardGrid = 'grid grid-cols-[minmax(0,1fr)] gap-3 lg:grid-flow-dens
 /** The tab's title follows the page, so a screen reader hears where a navigation landed. */
 export function useDocumentTitle(title: string) {
   useEffect(() => {
-    document.title = `${title} · Expense tracker`
+    document.title = `${title} · Pao`
   }, [title])
 }
 

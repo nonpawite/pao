@@ -252,7 +252,7 @@ function useFacts(data: ReviewData) {
   // How many of each weekday the range has had so far, so each bar is an average, not a total.
   const weekdayDays = Array(7).fill(0) as number[]
   for (let d = 0; d < days; d++) weekdayDays[(weekday(addDays(data.from, d)) + 6) % 7]++
-  // shortcut: entries are capped at 400 server-side, so a long year range averages a sample; fine for a family budget.
+  // shortcut: entries are capped at 400 server-side, so a long year range averages a sample; fine for a household budget.
   const weekdayAvg = weekdayTotal.map((v, i) => (weekdayDays[i] ? Math.round(v / weekdayDays[i] / 100) * 100 : 0))
   const [bigDate, bigAmount] = [...byDate].sort((a, b) => b[1] - a[1])[0]
   const [mostName, mostCount] = [...counts].sort((a, b) => b[1] - a[1])[0] ?? []

@@ -1,13 +1,13 @@
-// Synthetic demo data for local development and screenshots. Never run against real family data.
+// Synthetic demo data for local development and screenshots. Never run against real household data.
 // Needs two accounts created through the app first: demo@example.com and mint@example.com.
 // Run: bun scripts/seed-demo.ts (Bun loads .env itself)
 import { and, eq, inArray } from 'drizzle-orm'
 
 import { db } from '../src/db/index.ts'
 import { bankAccount, category, entry, pocket, pocketMember, user } from '../src/db/schema.ts'
-import { addDays, cycleFor } from '../src/lib/budget.ts'
+import { addDays, cycleFor, householdDay } from '../src/lib/budget.ts'
 
-const today = new Intl.DateTimeFormat('en-CA', { timeZone: process.env.APP_TZ || 'Asia/Bangkok' }).format(new Date())
+const today = householdDay()
 
 let seed = 7
 const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646
