@@ -51,6 +51,7 @@ export function useMoney(currency?: string) {
   return {
     money: (hundredths: number, opts: { sign?: boolean; symbol?: boolean; currency?: string } = {}) => formatMoney(hundredths, opts.currency ?? bound, tag, opts),
     compact: (hundredths: number) => compactMoney(hundredths, bound, tag),
+    currency: bound,
     symbol: currencySymbol(bound, tag),
   }
 }

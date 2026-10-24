@@ -243,7 +243,8 @@ function Entries({ c }: { c: CategoryDetail }) {
           today={c.today}
           who={c.pocketKind === 'shared'}
           grouped
-          dayAside={(_, spent) => (
+          // One pocket, so each day has one total, in its currency.
+          dayAside={(_, [{ total: spent }]) => (
             <span className={cn(c.limitType === 'day' && spent > c.limit && 'text-over-text')}>
               {money(spent)}
               {c.limitType === 'day' && ` / ${money(c.limit)}`}
