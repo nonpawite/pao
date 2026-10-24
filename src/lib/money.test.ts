@@ -61,31 +61,49 @@ test('axis ticks write the pocket currency where its amounts put it', () => {
 })
 
 test('parsing sums and thousands separators', () => {
-  assert.equal(parseAmount('65'), 6_500)
-  assert.equal(parseAmount('120+45'), 16_500)
-  assert.equal(parseAmount('120+45+30'), 19_500)
-  assert.equal(parseAmount('120 + 45.50'), 16_550)
-  assert.equal(parseAmount('1,250.50'), 125_050)
-  assert.equal(parseAmount('1 250'), 125_000)
+  assert.equal(parseAmount('65', 'THB'), 6_500)
+  assert.equal(parseAmount('120+45', 'THB'), 16_500)
+  assert.equal(parseAmount('120+45+30', 'THB'), 19_500)
+  assert.equal(parseAmount('120 + 45.50', 'THB'), 16_550)
+  assert.equal(parseAmount('1,250.50', 'THB'), 125_050)
+  assert.equal(parseAmount('1 250', 'THB'), 125_000)
 })
 
 test('parsing ignores a leading or trailing symbol of any currency', () => {
-  assert.equal(parseAmount('฿65'), 6_500)
-  assert.equal(parseAmount('$12.50'), 1_250)
-  assert.equal(parseAmount('12.50 €'), 1_250)
-  assert.equal(parseAmount('¥1,000'), 100_000)
-  assert.equal(parseAmount('US$12'), 1_200)
-  assert.equal(parseAmount('CHF 12'), 1_200)
-  assert.equal(parseAmount('12 KWD'), 1_200)
-  assert.equal(parseAmount('USD 12'), 1_200)
-  assert.equal(parseAmount('KWD 12.5'), 1_250)
-  assert.equal(parseAmount('12 US$'), 1_200)
-  assert.equal(parseAmount('฿120+฿45'), 16_500)
+  assert.equal(parseAmount('฿65', 'THB'), 6_500)
+  assert.equal(parseAmount('$12.50', 'THB'), 1_250)
+  assert.equal(parseAmount('12.50 €', 'THB'), 1_250)
+  assert.equal(parseAmount('¥1,000', 'THB'), 100_000)
+  assert.equal(parseAmount('US$12', 'THB'), 1_200)
+  assert.equal(parseAmount('CHF 12', 'THB'), 1_200)
+  assert.equal(parseAmount('12 KWD', 'THB'), 1_200)
+  assert.equal(parseAmount('USD 12', 'THB'), 1_200)
+  assert.equal(parseAmount('KWD 12.5', 'THB'), 1_250)
+  assert.equal(parseAmount('12 US$', 'THB'), 1_200)
+  assert.equal(parseAmount('฿120+฿45', 'THB'), 16_500)
 })
 
 test('parsing rejects junk', () => {
   for (const junk of ['', '0', 'abc', '$', '12-3', '12+', '1.234', '12..5', '1e3', '12abc3', '12abc', '12 xyz', 'abc12', 'xyz$12']) {
-    assert.equal(parseAmount(junk), null, junk)
+    assert.equal(parseAmount(junk, 'THB'), null, junk)
+  }
+})
+
+test('parsing keeps the decimals the currency shows, so rows and totals agree', () => {
+  assert.equal(parseAmount('12.5', 'JPY'), 1_300)
+  assert.equal(formatMoney(2 * parseAmount('12.5', 'JPY')!, 'JPY', 'en-GB'), '¥26')
+  // The typed sum is one amount: 12.4 + 0.4 is ¥12.8, shown as ¥13.
+  assert.equal(parseAmount('12.4+0.4', 'JPY'), 1_300)
+  assert.equal(parseAmount('0.4', 'JPY'), null)
+  assert.equal(parseAmount('12.55', 'KWD'), 1_255)
+  assert.equal(parseAmount('12.55', 'USD'), 1_255)
+})
+
+test('tight cells can drop the currency sign', () => {
+  for (const locale of ['en-GB', 'th-TH']) {
+    assert.equal(formatMoney(123_450, 'THB', locale, { symbol: false }), '1,234.50')
+    assert.equal(formatMoney(1_200, 'CHF', locale, { symbol: false }), '12')
+    assert.equal(formatMoney(-500, 'USD', locale, { symbol: false }), '−5')
   }
 })
 

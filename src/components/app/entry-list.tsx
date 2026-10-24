@@ -7,10 +7,11 @@ import { toast } from 'sonner'
 import { Button } from '#/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/components/ui/dialog'
 import { totalsByCurrency } from '#/lib/money'
+import type { CurrencyTotal } from '#/lib/money'
 import { cn } from '#/lib/utils'
 import { addEntry, deleteEntry } from '#/server/entries'
 import { useAddEntry } from './add-entry'
-import { useActivePocket, useMoney, useShell, useT } from './context'
+import { useMoney, useShell, useT } from './context'
 import { PocketChip } from './frame'
 import { Avatar, glyphFor } from './kit'
 
@@ -47,13 +48,12 @@ export function EntryRows({
   who?: boolean
   pockets?: Map<string, { name: string; color: string }>
   grouped?: boolean
-  dayAside?: (date: string, spent: number) => ReactNode
+  dayAside?: (date: string, spent: CurrencyTotal[]) => ReactNode
 }) {
   const shell = useShell()
   const router = useRouter()
   const { t, day } = useT()
-  const { money } = useMoney()
-  const active = useActivePocket()
+  const { money, currency } = useMoney()
   const { edit } = useAddEntry()
   const [removing, setRemoving] = useState<ListEntry | null>(null)
 
@@ -100,7 +100,7 @@ export function EntryRows({
 
   let body = entries.map(row)
   if (grouped) {
-    const currencyOf = (e: ListEntry) => e.currency ?? active.currency
+    const currencyOf = (e: ListEntry) => e.currency ?? currency
     // Every day lists its currencies in the same order: as they first appear in the list.
     const order = [...new Set(entries.map(currencyOf))]
     const days: Array<[string, ListEntry[]]> = []
@@ -109,7 +109,6 @@ export function EntryRows({
       else days.push([e.occurredOn, [e]])
     }
     body = days.map(([d, es]) => {
-      const spent = es.reduce((s, e) => s + (e.kind === 'expense' ? e.amount : 0), 0)
       // Rows from several pockets can mix currencies: one total each, never a sum (ADR 0001).
       const spentBy = totalsByCurrency(es.filter((e) => e.kind === 'expense').map((e) => ({ currency: currencyOf(e), total: e.amount }))).sort(
         (a, b) => order.indexOf(a.currency) - order.indexOf(b.currency),
@@ -119,7 +118,7 @@ export function EntryRows({
           <div className="caps flex items-baseline justify-between gap-3 pb-2 text-[12px] text-on-board-2">
             <h3>{d === today ? `${t('today')} · ${day(d, true)}` : day(d, true)}</h3>
             {dayAside
-              ? dayAside(d, spent)
+              ? dayAside(d, spentBy)
               : spentBy.length > 0 && <span>{spentBy.map((c) => money(c.total, { currency: c.currency })).join(' · ')}</span>}
           </div>
           {es.map(row)}

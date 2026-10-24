@@ -7,7 +7,6 @@ import { EntryRows } from '#/components/app/entry-list'
 import { PocketChip } from '#/components/app/frame'
 import { Board, BoardLine, CategoryGlyph, Figure, Group, LimitBar, Row, Status, pageMain, useDocumentTitle } from '#/components/app/kit'
 import { weekday } from '#/lib/budget'
-import { weekdayInitials } from '#/lib/i18n'
 import { cn } from '#/lib/utils'
 import { getCategoryDetail } from '#/server/category'
 import type { CategoryDetail } from '#/server/category'
@@ -120,13 +119,13 @@ function CategoryBoard({
 function DayView({ c }: { c: CategoryDetail }) {
   const d = c.day!
   const shell = useShell()
-  const { t, day, locale } = useT()
+  const { t, day, names } = useT()
   const { money } = useMoney(c.currency)
   // The grid starts on the user's own first weekday, as the Bills calendar does.
   const start = shell.user.weekStart
   const lead = (weekday(c.cycle.start) - start + 7) % 7
   // Initials come Monday first; turn them to start on the user's day.
-  const initials = weekdayInitials(locale)
+  const initials = names.weekdayInitials
   const heads = Array.from({ length: 7 }, (_, i) => initials[(start + i + 6) % 7])
   return (
     <>
@@ -244,7 +243,8 @@ function Entries({ c }: { c: CategoryDetail }) {
           today={c.today}
           who={c.pocketKind === 'shared'}
           grouped
-          dayAside={(_, spent) => (
+          // One pocket, so each day has one total, in its currency.
+          dayAside={(_, [{ total: spent }]) => (
             <span className={cn(c.limitType === 'day' && spent > c.limit && 'text-over-text')}>
               {money(spent)}
               {c.limitType === 'day' && ` / ${money(c.limit)}`}

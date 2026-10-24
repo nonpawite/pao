@@ -37,15 +37,14 @@ You need a machine with Docker and the Compose plugin (`docker compose`). You do
    ipconfig getifaddr en0     # macOS
    ```
 
-3. Open `docker-compose.yml`. Under the `app` service's `environment`, set `DEFAULT_CURRENCY` and `APP_TZ`, and add `BETTER_AUTH_URL` with the address members will open, for example:
+3. Open `docker-compose.yml`. Under the `app` service's `environment`, set `DEFAULT_CURRENCY` and `APP_TZ`, for example:
 
    ```yaml
          DEFAULT_CURRENCY: EUR
          APP_TZ: Europe/Berlin
-         BETTER_AUTH_URL: http://192.168.1.20:3000
    ```
 
-   Without `BETTER_AUTH_URL`, signing in works only at `http://localhost:3000` on the server itself. On any other plain `http` address, browsers drop the sign-in cookie. [Settings](#settings) lists every option.
+   [Settings](#settings) lists every option.
 
 4. Start Pao:
 
@@ -55,7 +54,7 @@ You need a machine with Docker and the Compose plugin (`docker compose`). You do
 
    On first start the app creates its auth secret, then sets up the database.
 
-5. Each member opens the address from step 3 and creates an account. Each new account gets a personal pocket in `DEFAULT_CURRENCY`, with starter categories and bank accounts.
+5. Each member opens `http://<server address>:3000`, with the address from step 2, and creates an account. Each new account gets a personal pocket in `DEFAULT_CURRENCY`, with starter categories and bank accounts.
 
 6. When everyone has an account, close signup: set `ALLOW_SIGNUP: "false"` in `docker-compose.yml` and run `docker compose up -d` again.
 
@@ -71,8 +70,8 @@ Every setting lives in `docker-compose.yml`, under the `app` service. After you 
 | `DEFAULT_CURRENCY` | `USD` | The currency of each new member's personal pocket, as an ISO 4217 code such as `THB`, `EUR` or `JPY`. A new shared pocket starts in its creator's personal-pocket currency. Any pocket can switch currency in its settings: its amounts are relabelled, never converted. Unset or unknown means `USD`. |
 | `APP_TZ` | `UTC` | The household's time zone, as a [tz database name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) such as `Europe/London`. "Today" and daily limits turn over at midnight there. Unset means `UTC`. |
 | `ALLOW_SIGNUP` | `"true"` | `"false"` closes signup. Existing members can still sign in. |
-| `BETTER_AUTH_URL` | not set | The exact address members open: `http://<server address>:3000` at home, or `https://<your domain>` behind a reverse proxy. Sign-in from any other address is refused. |
-| Port | `3000` | The left number in `"3000:3000"` under the app's `ports`. Change `BETTER_AUTH_URL` to match. |
+| `BETTER_AUTH_URL` | not set | Needed only behind an HTTPS reverse proxy: the public address, such as `https://pao.example.com`. Sign-in cookies are then `Secure`, and sign-in from any other address is refused. Leave it unset at home. |
+| Port | `3000` | The left number in `"3000:3000"` under the app's `ports`. |
 
 The `db` service also publishes Postgres on the server's `127.0.0.1:5432`, for development. If another program on the server already uses port 5432, delete the `ports:` lines under `db`. The app doesn't need them.
 

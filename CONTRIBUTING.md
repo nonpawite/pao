@@ -96,15 +96,17 @@ A language is one messages file plus one entry in the locale registry.
    ```
 
    - `name` is the language's name in that language. The Settings language picker shows it.
-   - `tag` is the locale tag for the platform's number, date and currency formatting. Month and weekday names come from it, so you don't translate them.
+   - `tag` is the locale tag for the platform's number, date and currency formatting. Month and weekday names come from it, so you don't translate them. The `date*` keys in your file set their word order.
 
 4. Run `bun run typecheck`. It reports every message key your file is missing or misspells.
-5. Run `bun test`. `src/lib/i18n.test.ts` uses `fr` and `de` as examples of languages Pao doesn't have. If you add one of them, change those examples to a language that is still missing.
+5. Run `bun test`.
 6. Start the dev server and pick the language in Settings.
 
 The registry matches a browser's language by its first part only, so one entry covers every region: `fr` serves both `fr-FR` and `fr-CA`. The bundled fonts cover Latin and Thai. Other scripts use the device's system font.
 
 The names Pao gives a new member's first pocket, categories and bank accounts are the `starter*` keys.
+
+The `glyph*` keys list words, split by `|`, that give a category its pictogram. A category name matches the words of every language, so add your language's words. New bills file under the category that gets the receipt pictogram, so your `starterBills` name needs a `glyphBill` word. `bun test` checks it.
 
 ## Pull requests
 

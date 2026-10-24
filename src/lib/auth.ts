@@ -24,10 +24,14 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (user) => {
-          await createPersonalSpace(user.id, pickLocale([String(user.locale)]))
+          await createPersonalSpace(user.id, pickLocale([(user as { locale?: string }).locale ?? '']))
         },
       },
     },
+  },
+  advanced: {
+    // Browsers drop Secure cookies over plain http (http://<LAN IP>:3000), so only an HTTPS address gets them.
+    useSecureCookies: process.env.BETTER_AUTH_URL?.startsWith('https://') ?? false,
   },
   plugins: [tanstackStartCookies()],
 })

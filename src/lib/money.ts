@@ -2,17 +2,33 @@
 
 import { locales } from './i18n.ts'
 
-/** Format hundredths in `currency` for an Intl locale tag such as 'th-TH' or 'en-GB'. */
-export function formatMoney(hundredths: number, currency: string, locale: string, opts: { sign?: boolean } = {}) {
-  const abs = Math.abs(hundredths)
-  const style = { style: 'currency', currency, currencyDisplay: 'narrowSymbol' } as const
-  // The currency's own decimals (JPY 0, USD 2, KWD 3), capped at the 2 that hundredths can hold.
-  const digits = Math.min(2, new Intl.NumberFormat(locale, style).resolvedOptions().maximumFractionDigits ?? 2)
-  const n = new Intl.NumberFormat(locale, {
-    ...style,
+const currencyStyle = (currency: string, currencyDisplay: 'narrowSymbol' | 'symbol' = 'narrowSymbol') =>
+  ({ style: 'currency', currency, currencyDisplay }) as const
+
+/** The decimals an amount in `currency` shows: its own (JPY 0, USD 2, KWD 3), at most 2. */
+const shownDigits = (currency: string) =>
+  // Capped at 2 because amounts are integer hundredths (ADR 0001).
+  Math.min(2, new Intl.NumberFormat('en', currencyStyle(currency)).resolvedOptions().maximumFractionDigits ?? 2)
+
+/** A positive amount as Intl parts, with decimals only when it has some. */
+function moneyParts(abs: number, currency: string, locale: string) {
+  const digits = shownDigits(currency)
+  return new Intl.NumberFormat(locale, {
+    ...currencyStyle(currency),
     minimumFractionDigits: abs % 100 === 0 ? 0 : digits,
     maximumFractionDigits: digits,
-  }).format(abs / 100)
+  }).formatToParts(abs / 100)
+}
+
+/**
+ * Format hundredths in `currency` for an Intl locale tag such as 'th-TH' or 'en-GB'.
+ * `symbol: false` drops the currency sign and the space beside it, for tight cells: CHF 12 → 12.
+ */
+export function formatMoney(hundredths: number, currency: string, locale: string, opts: { sign?: boolean; symbol?: boolean } = {}) {
+  const n = moneyParts(Math.abs(hundredths), currency, locale)
+    .filter((p) => opts.symbol !== false || (p.type !== 'currency' && p.type !== 'literal'))
+    .map((p) => p.value)
+    .join('')
   const sign = hundredths < 0 ? '−' : opts.sign ? '+' : ''
   return `${sign}${n}`
 }
@@ -22,12 +38,14 @@ export function compactMoney(hundredths: number, currency: string, locale: strin
   const units = hundredths / 100
   const n = units >= 1000 ? `${(units / 1000).toFixed(units >= 10000 ? 0 : 1).replace(/\.0$/, '')}K` : `${Math.round(units)}`
   // The symbol sits where formatMoney puts it (฿0, CHF 0).
-  return formatMoney(0, currency, locale).replace('0', n)
+  return moneyParts(0, currency, locale)
+    .map((p) => (p.type === 'integer' ? n : p.value))
+    .join('')
 }
 
-/** The symbol formatMoney writes for `currency`: ฿, $, ¥, CHF. */
-export const currencySymbol = (currency: string, locale: string) =>
-  new Intl.NumberFormat(locale, { style: 'currency', currency, currencyDisplay: 'narrowSymbol' }).formatToParts(0).find((p) => p.type === 'currency')!.value
+/** The symbol formatMoney writes for `currency`: ฿, $, ¥, CHF. `'symbol'` gives the code-style one instead: US$. */
+export const currencySymbol = (currency: string, locale: string, display: 'narrowSymbol' | 'symbol' = 'narrowSymbol') =>
+  new Intl.NumberFormat(locale, currencyStyle(currency, display)).formatToParts(0).find((p) => p.type === 'currency')!.value
 
 let letterSymbols: Set<string> | undefined
 
@@ -37,23 +55,23 @@ function isLetterSymbol(s: string) {
   letterSymbols ??= new Set(
     Intl.supportedValuesOf('currency').flatMap((currency) => [
       currency,
-      ...Object.values(locales).map(
-        ({ tag }) => new Intl.NumberFormat(tag, { style: 'currency', currency }).formatToParts(0).find((p) => p.type === 'currency')!.value,
-      ),
+      ...Object.values(locales).map(({ tag }) => currencySymbol(currency, tag, 'symbol')),
     ]),
   )
   return letterSymbols.has(s.toUpperCase())
 }
 
-/** Parse a typed amount, allowing simple sums like "120+45+30". Returns hundredths, or null if invalid. */
-export function parseAmount(input: string): number | null {
+/** Parse a typed amount in `currency`, allowing simple sums like "120+45+30". Returns hundredths, or null if invalid. */
+export function parseAmount(input: string, currency: string): number | null {
   // Symbols ($, ฿) may go anywhere; letters only as a currency code or code-style symbol at either end.
   const clean = input
     .replace(/[,\s]/g, '')
     .replace(/^\p{L}+\p{Sc}?|\p{L}+\p{Sc}?$/gu, (s) => (isLetterSymbol(s) ? '' : s))
     .replace(/\p{Sc}/gu, '')
   if (!/^\d+(\.\d{1,2})?(\+\d+(\.\d{1,2})?)*$/.test(clean)) return null
-  const hundredths = clean.split('+').reduce((sum, p) => sum + Math.round(Number(p) * 100), 0)
+  // Rounded to what the currency shows (¥12.5 is ¥13), so the stored amount is the shown one.
+  const step = 10 ** (2 - shownDigits(currency))
+  const hundredths = Math.round(clean.split('+').reduce((sum, p) => sum + Math.round(Number(p) * 100), 0) / step) * step
   return hundredths > 0 ? hundredths : null
 }
 

@@ -27,6 +27,10 @@ export function translate(locale: Locale, key: MessageKey, vars?: Record<string,
   return s
 }
 
+/** A case-insensitive pattern for a word-list message ('coffee|cafe'): its words in every shipped language. */
+export const wordPattern = (key: MessageKey) =>
+  new RegExp(Object.values(locales).flatMap((l) => l.messages[key].split('|')).filter(Boolean).join('|'), 'i')
+
 const ordinalKeys: Partial<Record<Intl.LDMLPluralRule, MessageKey>> = { one: 'ordinalOne', two: 'ordinalTwo', few: 'ordinalFew' }
 
 /** Day of month for the cycle start picker: 1st, 2nd, 23rd; Thai uses the number alone. */
@@ -34,24 +38,42 @@ export const ordinal = (locale: Locale, n: number) =>
   translate(locale, ordinalKeys[new Intl.PluralRules(locales[locale].tag, { type: 'ordinal' }).select(n)] ?? 'ordinalOther', { n })
 
 /** Dates are plain calendar days, so they format in UTC whatever the device's zone. */
-const dateFormat = (locale: Locale, options: Intl.DateTimeFormatOptions) =>
-  new Intl.DateTimeFormat(locales[locale].tag, { ...options, timeZone: 'UTC' }).format
+const dateFormat = (tag: string, options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(tag, { ...options, timeZone: 'UTC' })
 
 // 19 Oct 2026 is a Monday.
 const week = Array.from({ length: 7 }, (_, i) => Date.UTC(2026, 9, 19 + i))
 const year = Array.from({ length: 12 }, (_, i) => Date.UTC(2026, i, 1))
 
-/** Short weekday names, Monday first. */
-export const weekdayNames = (locale: Locale) => week.map(dateFormat(locale, { weekday: 'short' }))
+/**
+ * Month and weekday names from the platform, January and Monday first. Engines ship different names ('Sep' or
+ * 'Sept'), so the server builds this table and the browser formats from the server's copy: both render the same text.
+ */
+export function calendarNames(locale: Locale) {
+  const { tag } = locales[locale]
+  const names = (dates: number[], options: Intl.DateTimeFormatOptions) => dates.map(dateFormat(tag, options).format)
+  const year2026 = dateFormat(tag, { year: 'numeric' }).formatToParts(year[0]).find((p) => p.type === 'year')!.value
+  return {
+    months: names(year, { month: 'short' }),
+    monthsLong: names(year, { month: 'long' }),
+    weekdays: names(week, { weekday: 'short' }),
+    weekdaysLong: names(week, { weekday: 'long' }),
+    weekdayInitials: names(week, { weekday: 'narrow' }),
+    // What the language's calendar adds to the year: 543 for Thai's Buddhist era.
+    yearOffset: Number(year2026) - 2026,
+  }
+}
 
-/** One-letter weekday names, Monday first. */
-export const weekdayInitials = (locale: Locale) => week.map(dateFormat(locale, { weekday: 'narrow' }))
+export type CalendarNames = ReturnType<typeof calendarNames>
 
-/** Short month names, January first. */
-export const monthNames = (locale: Locale) => year.map(dateFormat(locale, { month: 'short' }))
-
-/** '2026-10-16' to '16 Oct' / '16 ต.ค.'; with weekday: 'Fri 16 Oct'. */
-export function formatDay(locale: Locale, date: string, withWeekday = false) {
+/** '2026-10-16' to '16 Oct' / '16 ต.ค.'; with weekday: 'Fri 16 Oct'. Word order comes from the messages file. */
+export function formatDay(locale: Locale, names: CalendarNames, date: string, withWeekday = false) {
   const [y, m, d] = date.split('-').map(Number)
-  return dateFormat(locale, { weekday: withWeekday ? 'short' : undefined, day: 'numeric', month: 'short' })(Date.UTC(y, m - 1, d))
+  const vars = { day: d, month: names.months[m - 1], weekday: names.weekdays[(new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7] }
+  return translate(locale, withWeekday ? 'dateWeekday' : 'dateDay', vars)
+}
+
+/** '2026-10' to 'October 2026' / 'ตุลาคม 2569'. */
+export function formatMonth(locale: Locale, names: CalendarNames, month: string) {
+  const [y, m] = month.split('-').map(Number)
+  return translate(locale, 'dateMonth', { month: names.monthsLong[m - 1], year: y + names.yearOffset })
 }

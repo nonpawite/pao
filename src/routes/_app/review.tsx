@@ -7,7 +7,6 @@ import { useActivePocket, useMoney, useT } from '#/components/app/context'
 import { PocketChip, PocketTabs } from '#/components/app/frame'
 import { Board, BoardLine, CategoryGlyph, Figure, PageTitle, Segmented, Tile, boardGrid, pageMain } from '#/components/app/kit'
 import { addDays, weekday } from '#/lib/budget'
-import { weekdayNames } from '#/lib/i18n'
 import { cn } from '#/lib/utils'
 import { getReview } from '#/server/review'
 import type { ReviewData } from '#/server/review'
@@ -236,7 +235,7 @@ function Fact({ label, value, sub, text }: { label: string; value: string; sub?:
 
 /** Figures read off the entries: average per day, the biggest day, what gets logged most, spend by weekday. */
 function useFacts(data: ReviewData) {
-  const { day, locale } = useT()
+  const { day, names: calendar } = useT()
   if (!data.entries.length) return null
   const today = addDays(data.cycle.start, data.cycle.dayIndex - 1)
   const last = data.to < today ? data.to : today
@@ -266,6 +265,6 @@ function useFacts(data: ReviewData) {
     most: mostName ? { name: mostName, count: mostCount } : null,
     weekday: weekdayAvg,
     topDay: weekdayAvg.indexOf(Math.max(...weekdayAvg)),
-    names: weekdayNames(locale),
+    names: calendar.weekdays,
   }
 }

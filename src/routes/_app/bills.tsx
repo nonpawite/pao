@@ -13,8 +13,7 @@ import { PocketTabs } from '#/components/app/frame'
 import { Board, CategoryGlyph, Figure, PageTitle, Segmented, Tile, boardGrid, pageMain } from '#/components/app/kit'
 import { isOwed } from '#/lib/bills'
 import { addDays, daysInMonth, diffDays, iso, weekday } from '#/lib/budget'
-import { locales, monthNames, ordinal } from '#/lib/i18n'
-import type { Locale } from '#/lib/i18n'
+import { ordinal } from '#/lib/i18n'
 import { cn } from '#/lib/utils'
 import { getBillsPage } from '#/server/bills'
 import type { BillsPage } from '#/server/bills'
@@ -95,16 +94,17 @@ const listCols = 'grid grid-cols-[minmax(0,1fr)_68px_60px] items-center gap-x-3 
 
 /** The pocket's bills as a timetable, soonest first, with what they cost a month and a year. */
 function ListView({ data, onEdit, onAdd }: { data: BillsPage; onEdit?: (b: Parameters<typeof draftFrom>[0]) => void; onAdd: (date?: string) => void }) {
-  const { t, day, locale } = useT()
+  const { t, day, locale, names } = useT()
   const pocket = useActivePocket()
   const { money } = useMoney()
   const cost = (b: BillsPage['bills'][number]) => b.amount ?? b.lastPaid ?? 0
   const perMonth = data.bills.filter((b) => b.repeat === 'monthly').reduce((s, b) => s + cost(b), 0)
   const perYear = perMonth * 12 + data.bills.filter((b) => b.repeat === 'yearly').reduce((s, b) => s + cost(b), 0)
   const toPay = data.bills.reduce((s, b) => s + b.setAside, 0)
+  const yearlyOn = (b: BillsPage['bills'][number]) => t('dateDay', { day: b.day, month: names.months[b.month! - 1] })
   const when = (b: BillsPage['bills'][number]) =>
     b.repeat === 'yearly'
-      ? `${t('yearly')} · ${b.day} ${monthNames(locale)[b.month! - 1]}`
+      ? `${t('yearly')} · ${yearlyOn(b)}`
       : b.day === 31
         ? t('lastDay')
         : `${t('monthly')} · ${ordinal(locale, b.day)}`
@@ -184,7 +184,7 @@ function ListView({ data, onEdit, onAdd }: { data: BillsPage; onEdit?: (b: Param
                 <span className="truncate text-[12px] text-on-board-2">
                   {/* The phone has no Repeats column, so the day rides along here. */}
                   <span className="lg:hidden">
-                    {b.repeat === 'yearly' ? `${b.day} ${monthNames(locale)[b.month! - 1]}` : b.day === 31 ? t('lastDay') : ordinal(locale, b.day)} ·{' '}
+                    {b.repeat === 'yearly' ? yearlyOn(b) : b.day === 31 ? t('lastDay') : ordinal(locale, b.day)} ·{' '}
                   </span>
                   {pocket.categories.find((c) => c.id === b.categoryId)?.name}
                 </span>
@@ -202,18 +202,10 @@ function ListView({ data, onEdit, onAdd }: { data: BillsPage; onEdit?: (b: Param
   )
 }
 
-/** Month names as people say them: "October 2026", "ตุลาคม 2569". */
-const monthLabel = (month: string, locale: Locale) => {
-  const [y, m] = month.split('-').map(Number)
-  return new Intl.DateTimeFormat(locales[locale].tag, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
-    new Date(Date.UTC(y, m - 1, 1)),
-  )
-}
-
 /** ‹ month › in the title row, as Subly's calendar has it; the month's name returns to this month. */
 function MonthNav({ month, today }: { month: string; today: string }) {
   const navigate = useNavigate({ from: Route.fullPath })
-  const { t, locale } = useT()
+  const { t, month: monthLabel } = useT()
   const thisMonth = today.slice(0, 7)
   const go = (m: string) => void navigate({ search: { view: 'calendar', m: m === thisMonth ? undefined : m } })
   const arrow = 'grid size-11 place-items-center rounded-sm text-ink-2 transition-colors hover:bg-plate hover:text-ink lg:size-9'
@@ -229,7 +221,7 @@ function MonthNav({ month, today }: { month: string; today: string }) {
         title={month === thisMonth ? undefined : t('thisMonthLink')}
         className="h-11 min-w-36 rounded-sm px-2 text-center text-[15px] font-medium enabled:hover:bg-plate lg:h-9"
       >
-        {monthLabel(month, locale)}
+        {monthLabel(month)}
       </button>
       <button type="button" aria-label={t('nextMonth')} onClick={() => go(shiftMonth(month, 1))} className={arrow}>
         <CaretRight className="size-4" />
@@ -246,7 +238,7 @@ function MonthNav({ month, today }: { month: string; today: string }) {
 function CalendarView({ data, onEdit, onAdd }: { data: BillsPage; onEdit?: (b: Parameters<typeof draftFrom>[0]) => void; onAdd: (date?: string) => void }) {
   const shell = useShell()
   const pocket = useActivePocket()
-  const { t, day, locale } = useT()
+  const { t, day, month: monthLabel, names } = useT()
   const { money } = useMoney()
   const [picked, setPicked] = useState<string | null>(null)
   const owner = pocket.role === 'owner'
@@ -258,15 +250,9 @@ function CalendarView({ data, onEdit, onAdd }: { data: BillsPage; onEdit?: (b: P
   const lead = (weekday(first) - shell.user.weekStart + 7) % 7
   const cells = Array.from({ length: Math.ceil((lead + length) / 7) * 7 }, (_, i) => addDays(first, i - lead))
   const payday = iso(y, m, Math.min(data.payday, length))
-  // 18 Oct 2026 is a Sunday: count from it to name the week in the user's order.
-  // Thai long names open with วัน ("day"), which the column heads drop; other languages pass through.
-  const weekdays = (style: 'long' | 'short') =>
-    Array.from({ length: 7 }, (_, i) =>
-      new Intl.DateTimeFormat(locales[locale].tag, { weekday: style, timeZone: 'UTC' })
-        .format(new Date(Date.UTC(2026, 9, 18 + ((shell.user.weekStart + i) % 7))))
-        .replace(/^วัน/, ''),
-    )
-  const [long, short] = [weekdays('long'), weekdays('short')]
+  // Names come Monday first; turn them to start on the user's day.
+  const weekdays = (list: string[]) => Array.from({ length: 7 }, (_, i) => list[(shell.user.weekStart + i + 6) % 7])
+  const [long, short] = [weekdays(names.weekdaysLong), weekdays(names.weekdays)]
 
   const onDay = new Map<string, Bill[]>()
   for (const b of data.monthBills) onDay.set(b.due!, [...(onDay.get(b.due!) ?? []), b])
@@ -281,7 +267,7 @@ function CalendarView({ data, onEdit, onAdd }: { data: BillsPage; onEdit?: (b: P
     <div className={boardGrid}>
       <div
         role="group"
-        aria-label={monthLabel(data.month, locale)}
+        aria-label={monthLabel(data.month)}
         className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-board-line bg-board-line lg:col-span-4"
       >
         {long.map((name, i) => (
@@ -308,7 +294,7 @@ function CalendarView({ data, onEdit, onAdd }: { data: BillsPage; onEdit?: (b: P
 
       {/* The month's figures and its bills stack beside the grid, each as tall as its content. */}
       <div className="grid content-start gap-3 lg:col-span-2 lg:gap-4">
-        <Tile title={t('billsInMonth', { month: monthLabel(data.month, locale) })} aside={data.monthBills.length === 1 ? t('billOne') : t('billCount', { n: data.monthBills.length })}>
+        <Tile title={t('billsInMonth', { month: monthLabel(data.month) })} aside={data.monthBills.length === 1 ? t('billOne') : t('billCount', { n: data.monthBills.length })}>
           <Figure text={money(total)} className="text-[30px]" />
           {total > 0 && (
             <span aria-hidden className="flex h-1 bg-board-line">
@@ -391,9 +377,9 @@ function DayCell({
   const { t, day } = useT()
   const color = useCategoryColor()
   const pocket = useActivePocket()
-  const { money, symbol } = useMoney()
+  const { money } = useMoney()
   // Cells are tight, so their amounts drop the currency sign.
-  const bare = (n: number) => money(n).replace(symbol, '').trim()
+  const bare = (n: number) => money(n, { symbol: false })
   const owed = bills.filter((b) => isOwed(b.state)).reduce((s, b) => s + worth(b), 0)
   const late = bills.some((b) => b.state === 'late')
   const tone = (b: Bill) => (b.state === 'late' ? 'text-over-text' : b.state === 'paid' || b.state === 'skipped' ? 'text-on-board-2' : '')

@@ -181,7 +181,7 @@ export function AddEntryForm({
   // shortcut: the typed amount puts the symbol first, as both shipped languages do; follow formatToParts once one puts it after.
   const { money, symbol } = useMoney(pocket.currency)
   const category = pocket.categories.find((c) => c.id === categoryId) ?? null
-  const amount = parseAmount(amountText)
+  const amount = parseAmount(amountText, pocket.currency)
   const yesterday = addDays(shell.today, -1)
 
   // The whole day of this pocket, so lines logged earlier show and nothing gets logged twice.

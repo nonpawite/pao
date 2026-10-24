@@ -665,7 +665,7 @@ function PocketCurrency({ pocket }: { pocket: Shell['pockets'][number] }) {
         />
       </div>
       {next && (
-        <div role="alert" className="grid gap-3 rounded-sm bg-ahead/12 p-3">
+        <div role="alert" className="grid gap-3 rounded-sm bg-over/10 p-3">
           <p className="text-[15px]">
             <b className="font-semibold">{t('changeCurrencyTitle', { currency: next })}</b>{' '}
             {t('changeCurrencyHint', { from: from.money(50_000), to: to.money(50_000) })}
