@@ -7,12 +7,13 @@ import { Button } from '#/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/components/ui/dialog'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
-import { addDays, cycleFor, formatBaht, parseAmount } from '#/lib/budget'
+import { addDays, cycleFor } from '#/lib/budget'
+import { parseAmount } from '#/lib/money'
 import { cn } from '#/lib/utils'
 import { archiveCategory, restoreCategory, saveCategory, setCycleStartDay } from '#/server/limits'
 import type { Shell } from '#/server/shell'
 import { pickerClass, useDays } from './bill-form'
-import { useT } from './context'
+import { useMoney, useT } from './context'
 import { CategoryGlyph, Row, Segmented } from './kit'
 import { Picker } from './picker'
 
@@ -28,6 +29,8 @@ export function PocketPlan({ pocket }: { pocket: Shell['pockets'][number] }) {
   const router = useRouter()
   const { t, range } = useT()
   const { dayOptions, dayName } = useDays()
+  // The plan's pocket, which can differ from the active one.
+  const { money, symbol } = useMoney(pocket.currency)
   const [editing, setEditing] = useState<Editing | null>(null)
   const [error, setError] = useState('')
   const canEdit = pocket.role === 'owner'
@@ -83,7 +86,7 @@ export function PocketPlan({ pocket }: { pocket: Shell['pockets'][number] }) {
               <span className="caps shrink-0 rounded-sm bg-plate px-2 py-1 text-[11px] text-ink-2">
                 {t(c.limitType === 'day' ? 'perDay' : c.limitType === 'cycle' ? 'perCycle' : 'noLimit')}
               </span>
-              {c.limitType !== 'none' && <span className="w-20 shrink-0 text-right font-board text-[16px] font-semibold">{formatBaht(c.limitAmount)}</span>}
+              {c.limitType !== 'none' && <span className="w-20 shrink-0 text-right font-board text-[16px] font-semibold">{money(c.limitAmount)}</span>}
               {canEdit && <CaretRight className="size-4 shrink-0 text-ink-2" weight="bold" />}
             </button>
           </Row>
@@ -102,8 +105,8 @@ export function PocketPlan({ pocket }: { pocket: Shell['pockets'][number] }) {
         )}
         {cycleTotal + dayTotal > 0 && (
           <Row className="grid gap-0.5 py-2.5">
-            <span className="font-board text-[15px] font-semibold">{t('plannedUpTo', { amount: formatBaht(cycleTotal + dayTotal) })}</span>
-            <span className="text-[13px] text-ink-2">{t('plannedDetail', { cycle: formatBaht(cycleTotal), day: formatBaht(dayTotal) })}</span>
+            <span className="font-board text-[15px] font-semibold">{t('plannedUpTo', { amount: money(cycleTotal + dayTotal) })}</span>
+            <span className="text-[13px] text-ink-2">{t('plannedDetail', { cycle: money(cycleTotal), day: money(dayTotal) })}</span>
           </Row>
         )}
       </div>
@@ -162,7 +165,7 @@ export function PocketPlan({ pocket }: { pocket: Shell['pockets'][number] }) {
                     id="cat-amount"
                     inputMode="decimal"
                     required
-                    placeholder="฿"
+                    placeholder={symbol}
                     value={editing.amount}
                     aria-invalid={!!error || undefined}
                     aria-describedby={error ? 'cat-amount-error' : undefined}

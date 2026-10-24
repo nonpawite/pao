@@ -6,11 +6,10 @@ import { toast } from 'sonner'
 
 import { Button } from '#/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/components/ui/dialog'
-import { formatBaht } from '#/lib/budget'
 import { cn } from '#/lib/utils'
 import { addEntry, deleteEntry } from '#/server/entries'
 import { useAddEntry } from './add-entry'
-import { useShell, useT } from './context'
+import { useMoney, useShell, useT } from './context'
 import { PocketChip } from './frame'
 import { Avatar, glyphFor } from './kit'
 
@@ -25,6 +24,8 @@ type ListEntry = {
   userName: string
   pocketId?: string
   accountName?: string | null
+  /** Set when the row's pocket can differ from the active one; otherwise the active pocket's currency. */
+  currency?: string
 }
 
 /**
@@ -50,6 +51,7 @@ export function EntryRows({
   const shell = useShell()
   const router = useRouter()
   const { t, day } = useT()
+  const { money } = useMoney()
   const { edit } = useAddEntry()
   const [removing, setRemoving] = useState<ListEntry | null>(null)
 
@@ -88,7 +90,7 @@ export function EntryRows({
         </span>
         {/* Spending is the default, so only income carries a sign. */}
         <span className={cn('shrink-0 font-board text-[16px] font-semibold', e.kind === 'income' && 'text-ok-text')}>
-          {formatBaht(e.amount, { sign: e.kind === 'income' })}
+          {money(e.amount, { sign: e.kind === 'income', currency: e.currency })}
         </span>
       </button>
     )
@@ -107,7 +109,7 @@ export function EntryRows({
         <div key={d} className="grid pt-5 first:pt-0">
           <div className="caps flex items-baseline justify-between gap-3 pb-2 text-[12px] text-on-board-2">
             <h3>{d === today ? `${t('today')} · ${day(d, true)}` : day(d, true)}</h3>
-            {dayAside ? dayAside(d, spent) : spent > 0 && <span>{formatBaht(spent)}</span>}
+            {dayAside ? dayAside(d, spent) : spent > 0 && <span>{money(spent)}</span>}
           </div>
           {es.map(row)}
         </div>
@@ -121,7 +123,7 @@ export function EntryRows({
       <Dialog open={!!removing} onOpenChange={(o) => !o && setRemoving(null)}>
         <DialogContent className="max-w-sm">
           <DialogTitle>{removing?.note || removing?.categoryName || t('income')}</DialogTitle>
-          <DialogDescription>{removing && `${formatBaht(removing.amount)} · ${day(removing.occurredOn, true)}`}</DialogDescription>
+          <DialogDescription>{removing && `${money(removing.amount, { currency: removing.currency })} · ${day(removing.occurredOn, true)}`}</DialogDescription>
           {/* Edit is the usual job, so it takes the primary place; Remove stays quiet and can be undone. */}
           <div className="grid grid-cols-2 gap-2">
             <Button
