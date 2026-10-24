@@ -24,7 +24,7 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (user) => {
-          await createPersonalSpace(user.id, pickLocale([String(user.locale)]))
+          await createPersonalSpace(user.id, pickLocale([(user as { locale?: string }).locale ?? '']))
         },
       },
     },
