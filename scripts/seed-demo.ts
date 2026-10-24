@@ -1,6 +1,6 @@
 // Synthetic demo data for local development and screenshots. Never run against real family data.
 // Needs two accounts created through the app first: demo@example.com and mint@example.com.
-// Run: node --env-file=.env scripts/seed-demo.ts
+// Run: bun scripts/seed-demo.ts (Bun loads .env itself)
 import { and, eq, inArray } from 'drizzle-orm'
 
 import { db } from '../src/db/index.ts'

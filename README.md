@@ -54,24 +54,26 @@ The auth secret lives in the `app-data` volume. Losing it only signs everyone ou
 
 ## Develop
 
+Needs [Bun](https://bun.sh) 1.3 or newer.
+
 ```
-npm install
+bun install
 docker compose up -d db        # Postgres on 127.0.0.1:5432
-npm run db:migrate
-npm run dev                    # http://localhost:3000
-npm test                       # cycle and limit math
+bun run db:migrate
+bun run dev                    # http://localhost:3000
+bun test                       # cycle and limit math
 ```
 
 `.env` for development needs `DATABASE_URL=postgresql://tracker:tracker@localhost:5432/tracker`, `BETTER_AUTH_URL=http://localhost:3000` and a `BETTER_AUTH_SECRET`.
 
-After changing `src/db/schema.ts`, run `npm run db:generate` and commit the new file in `drizzle/`.
+After changing `src/db/schema.ts`, run `bun run db:generate` and commit the new file in `drizzle/`.
 
 ### Demo data
 
 `scripts/seed-demo.ts` fills a development database with synthetic entries for screenshots. Create `demo@example.com` and `mint@example.com` in the app first, then:
 
 ```
-node --env-file=.env scripts/seed-demo.ts
+bun scripts/seed-demo.ts
 ```
 
 It deletes and rewrites those demo users' entries. Never run it against real data.
