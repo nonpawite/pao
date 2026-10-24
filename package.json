@@ -6,16 +6,17 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "dev": "vite dev --port 3000",
+    "dev": "bun --bun vite dev --port 3000",
     "generate-routes": "tsr generate",
-    "build": "vite build",
-    "preview": "vite preview",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
-    "db:pull": "drizzle-kit pull",
-    "db:studio": "drizzle-kit studio",
-    "test": "node --test src/lib/*.test.ts"
+    "build": "bun --bun vite build",
+    "preview": "bun --bun vite preview",
+    "db:generate": "bun --bun drizzle-kit generate",
+    "db:migrate": "bun --bun drizzle-kit migrate",
+    "db:push": "bun --bun drizzle-kit push",
+    "db:pull": "bun --bun drizzle-kit pull",
+    "db:studio": "bun --bun drizzle-kit studio",
+    "test": "bun test src/lib",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@fontsource-variable/anuphan": "^5.3.0",
@@ -55,7 +56,6 @@
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.1",
     "dotenv": "^17.3.1",
-    "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.0"
   },

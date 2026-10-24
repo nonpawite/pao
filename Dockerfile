@@ -1,17 +1,17 @@
-FROM node:24-alpine AS build
+FROM oven/bun:1.3.14-alpine AS build
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 COPY . .
-RUN npm run build
+RUN bun run build
 
-FROM node:24-alpine
+FROM oven/bun:1.3.14-alpine
 WORKDIR /app
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile --production
 COPY --from=build /app/.output ./.output
 COPY drizzle ./drizzle
 COPY scripts/migrate.mjs scripts/start.mjs ./scripts/
 EXPOSE 3000
-CMD ["node", "scripts/start.mjs"]
+CMD ["bun", "scripts/start.mjs"]
