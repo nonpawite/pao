@@ -29,6 +29,7 @@ import { useEffect, useRef } from 'react'
 import type { CSSProperties, KeyboardEvent, ReactNode } from 'react'
 
 import type { LimitState, StripDay } from '#/lib/budget'
+import { wordPattern } from '#/lib/i18n'
 import { cn } from '#/lib/utils'
 import { useT } from './context'
 
@@ -301,31 +302,31 @@ export function Tile({ title, aside, className, children }: { title: ReactNode; 
   )
 }
 
-// Wayfinding pictograms by category name, English or Thai. Order matters: the first match wins.
+// Wayfinding pictograms by category name, in any shipped language (the glyph* words). Order matters: the first match wins.
 const glyphRules: Array<[RegExp, Icon]> = [
-  [/coffee|cafe|กาแฟ/i, Coffee],
-  [/food|eat|lunch|dinner|meal|อาหาร|ข้าว/i, ForkKnife],
-  [/grocer|market|ของใช้|ตลาด|ซุปเปอร์/i, Basket],
-  [/gas|fuel|petrol|น้ำมัน/i, GasPump],
-  [/travel|trip|flight|ท่องเที่ยว|เที่ยว/i, AirplaneTilt],
-  [/taxi|grab|แท็กซี่/i, Taxi],
-  [/transport|bts|mrt|train|เดินทาง|รถไฟ/i, Train],
-  [/bus|รถเมล์/i, Bus],
-  [/car|รถ/i, Car],
-  [/shop|ช้อป|ซื้อ/i, ShoppingBag],
-  [/cloth|เสื้อ/i, TShirt],
-  [/bill|ค่าบิล|บิล/i, Receipt],
-  [/water|ค่าน้ำ/i, Drop],
-  [/electric|utilit|ไฟ|สาธารณูปโภค/i, Lightning],
-  [/rent|home|house|บ้าน|ค่าเช่า/i, House],
-  [/phone|internet|mobile|โทรศัพท์|เน็ต/i, DeviceMobile],
-  [/health|doctor|medic|สุขภาพ|ยา|หมอ/i, Heartbeat],
-  [/gym|sport|fitness|กีฬา|ฟิต/i, Barbell],
-  [/fun|movie|entertain|game|บันเทิง|หนัง/i, FilmSlate],
-  [/gift|ของขวัญ|ทำบุญ/i, Gift],
-  [/school|edu|study|การศึกษา|เรียน/i, GraduationCap],
-  [/kid|child|baby|ลูก|เด็ก/i, Baby],
-  [/pet|dog|cat|สัตว์|หมา|แมว/i, PawPrint],
+  [wordPattern('glyphCoffee'), Coffee],
+  [wordPattern('glyphFood'), ForkKnife],
+  [wordPattern('glyphGroceries'), Basket],
+  [wordPattern('glyphGas'), GasPump],
+  [wordPattern('glyphTravel'), AirplaneTilt],
+  [wordPattern('glyphTaxi'), Taxi],
+  [wordPattern('glyphTransport'), Train],
+  [wordPattern('glyphBus'), Bus],
+  [wordPattern('glyphCar'), Car],
+  [wordPattern('glyphShopping'), ShoppingBag],
+  [wordPattern('glyphClothes'), TShirt],
+  [wordPattern('glyphBill'), Receipt],
+  [wordPattern('glyphWater'), Drop],
+  [wordPattern('glyphElectric'), Lightning],
+  [wordPattern('glyphHome'), House],
+  [wordPattern('glyphPhone'), DeviceMobile],
+  [wordPattern('glyphHealth'), Heartbeat],
+  [wordPattern('glyphGym'), Barbell],
+  [wordPattern('glyphFun'), FilmSlate],
+  [wordPattern('glyphGift'), Gift],
+  [wordPattern('glyphSchool'), GraduationCap],
+  [wordPattern('glyphKids'), Baby],
+  [wordPattern('glyphPets'), PawPrint],
 ]
 
 /** The pictogram for a category, or null when none fits (callers show its initial instead). */

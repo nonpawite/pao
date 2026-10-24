@@ -106,6 +106,8 @@ The registry matches a browser's language by its first part only, so one entry c
 
 The names Pao gives a new member's first pocket, categories and bank accounts are the `starter*` keys.
 
+The `glyph*` keys list words, split by `|`, that give a category its pictogram. A category name matches the words of every language, so add your language's words. New bills file under the category that gets the receipt pictogram, so your `starterBills` name needs a `glyphBill` word. `bun test` checks it.
+
 ## Pull requests
 
 A pull request needs:

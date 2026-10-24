@@ -27,6 +27,10 @@ export function translate(locale: Locale, key: MessageKey, vars?: Record<string,
   return s
 }
 
+/** A case-insensitive pattern for a word-list message ('coffee|cafe'): its words in every shipped language. */
+export const wordPattern = (key: MessageKey) =>
+  new RegExp(Object.values(locales).flatMap((l) => l.messages[key].split('|')).filter(Boolean).join('|'), 'i')
+
 const ordinalKeys: Partial<Record<Intl.LDMLPluralRule, MessageKey>> = { one: 'ordinalOne', two: 'ordinalTwo', few: 'ordinalFew' }
 
 /** Day of month for the cycle start picker: 1st, 2nd, 23rd; Thai uses the number alone. */

@@ -1,4 +1,5 @@
 import { useRouter } from '@tanstack/react-router'
+import { Receipt } from '@phosphor-icons/react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 
@@ -52,7 +53,7 @@ export const draftFrom = (b: SavedBill): BillDraft => ({
 
 /**
  * A blank bill on a given date and the first account. Its category is the pocket's bills category when it has one
- * (named like "Bills" or "ค่าบิล"); otherwise none, so the bill is never filed under Gas without a choice.
+ * (the receipt pictogram, named like "Bills" or "ค่าบิล"); otherwise none, so the bill is never filed under Gas without a choice.
  */
 export function useNewDraft() {
   const shell = useShell()
@@ -62,7 +63,7 @@ export function useNewDraft() {
     name: '',
     amount: '',
     varies: false,
-    categoryId: pocket.categories.find((c) => glyphFor(c.name) === glyphFor('bill'))?.id ?? null,
+    categoryId: pocket.categories.find((c) => glyphFor(c.name) === Receipt)?.id ?? null,
     bankAccountId: shell.accounts[0]?.id ?? null,
     repeat: 'monthly',
     day: Number(date.slice(8)),

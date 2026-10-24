@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { calendarNames, formatDay, formatMonth, localeCodes, ordinal, pickLocale } from './i18n.ts'
-import type { CalendarNames } from './i18n.ts'
+import { calendarNames, formatDay, formatMonth, localeCodes, locales, ordinal, pickLocale, translate, wordPattern } from './i18n.ts'
+import type { CalendarNames, MessageKey } from './i18n.ts'
 
 test('signup takes the first browser language the registry has', () => {
   assert.equal(pickLocale(['th-TH', 'en-US']), 'th')
@@ -62,4 +62,15 @@ test("dates set the shipped names in the language's word order", () => {
   assert.equal(formatDay('en', names, '2026-10-16', true), 'w5 16 m10')
   assert.equal(formatDay('th', names, '2026-03-01', true), 'w7 1 m3')
   assert.equal(formatMonth('th', names, '2026-10'), 'M10 2569')
+})
+
+test('word lists match a name in any shipped language', () => {
+  assert.ok(wordPattern('glyphBill').test('Utility bills'))
+  assert.ok(wordPattern('glyphBill').test('ค่าบิล'))
+  // Each language's starter bills category is the one a new bill files under.
+  for (const locale of localeCodes) assert.ok(wordPattern('glyphBill').test(translate(locale, 'starterBills')), locale)
+  // An empty word (a stray |) would match every name.
+  for (const key of Object.keys(locales.en.messages).filter((k) => k.startsWith('glyph')) as MessageKey[]) {
+    assert.ok(!wordPattern(key).test('-'), key)
+  }
 })
