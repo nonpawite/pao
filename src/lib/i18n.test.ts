@@ -8,11 +8,12 @@ test('signup takes the first browser language the registry has', () => {
   assert.equal(pickLocale(['th-TH', 'en-US']), 'th')
   assert.equal(pickLocale(['TH']), 'th')
   assert.equal(pickLocale(['en-US', 'th']), 'en')
-  assert.equal(pickLocale(['fr-FR', 'th']), 'th')
+  assert.equal(pickLocale(['qaa-QM', 'th']), 'th')
 })
 
+// qaa to qtz are reserved for private use, so no translation will ever claim them.
 test('a language the registry lacks falls back to English', () => {
-  assert.equal(pickLocale(['fr-FR', 'de']), 'en')
+  assert.equal(pickLocale(['qaa-QM', 'qtz']), 'en')
   assert.equal(pickLocale([]), 'en')
   // Stored codes go through the same door; prototype names are not languages.
   assert.equal(pickLocale(['constructor']), 'en')
