@@ -43,6 +43,8 @@ services:
       # APP_TZ: your time zone, so "today" and daily limits turn over at your midnight. Use a name
       # from https://en.wikipedia.org/wiki/List_of_tz_database_time_zones, e.g. Europe/London. Unset means UTC.
       APP_TZ: UTC
+      # Only behind an HTTPS reverse proxy: the public address. Leave it unset for http://<server address>:3000.
+      # BETTER_AUTH_URL: https://pao.example.com
     volumes:
       # The auth secret the app creates on first start.
       - app-data:/app/data

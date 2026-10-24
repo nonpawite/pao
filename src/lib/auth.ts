@@ -29,5 +29,9 @@ export const auth = betterAuth({
       },
     },
   },
+  advanced: {
+    // Browsers drop Secure cookies over plain http (http://<LAN IP>:3000), so only an HTTPS address gets them.
+    useSecureCookies: process.env.BETTER_AUTH_URL?.startsWith('https://') ?? false,
+  },
   plugins: [tanstackStartCookies()],
 })
