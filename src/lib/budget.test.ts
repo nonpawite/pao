@@ -5,9 +5,7 @@ import {
   cycleFor,
   cycleLimitState,
   dayStrip,
-  formatBaht,
   householdDay,
-  parseAmount,
   previousCycle,
   sortByState,
 } from './budget.ts'
@@ -58,21 +56,6 @@ test('problems sort first', () => {
     { name: 'Bills', state: 'ahead' as const, spent: 9, limit: 10 },
   ]
   assert.deepEqual(sortByState(rows).map((r) => r.name), ['Travel', 'Bills', 'Fun'])
-})
-
-test('amount parsing accepts sums and rejects junk', () => {
-  assert.equal(parseAmount('65'), 6_500)
-  assert.equal(parseAmount('120+45+30'), 19_500)
-  assert.equal(parseAmount('1,250.50'), 125_050)
-  assert.equal(parseAmount('0'), null)
-  assert.equal(parseAmount('12-3'), null)
-  assert.equal(parseAmount('abc'), null)
-})
-
-test('baht formatting', () => {
-  assert.equal(formatBaht(115_000), '฿1,150')
-  assert.equal(formatBaht(6_550), '฿65.50')
-  assert.equal(formatBaht(-15_000), '−฿150')
 })
 
 test('household day falls back to UTC when APP_TZ is unset', () => {

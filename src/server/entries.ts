@@ -14,7 +14,7 @@ const entryInput = z.object({
   kind: z.enum(['expense', 'income']),
   categoryId: z.uuid().nullable(),
   bankAccountId: z.uuid().nullable(),
-  // Satang. Upper bound keeps it inside a Postgres integer.
+  // Hundredths. Upper bound keeps it inside a Postgres integer.
   amount: z.number().int().positive().max(2_000_000_000),
   note: z.string().trim().max(200),
   occurredOn: isoDate,

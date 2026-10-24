@@ -57,7 +57,7 @@ export const category = pgTable(
       .references(() => pocket.id, { onDelete: 'cascade' }),
     name: text().notNull(),
     limitType: text('limit_type', { enum: ['day', 'cycle', 'none'] }).notNull(),
-    // Satang (1/100 baht). 0 when limitType is 'none'.
+    // Hundredths of the pocket currency. 0 when limitType is 'none'.
     limitAmount: integer('limit_amount').notNull().default(0),
     sortOrder: integer('sort_order').notNull().default(0),
     archivedAt: timestamp('archived_at'),
@@ -94,7 +94,7 @@ export const entry = pgTable(
     bankAccountId: uuid('bank_account_id').references(() => bankAccount.id, {
       onDelete: 'set null',
     }),
-    // Satang, always positive; kind gives the direction.
+    // Hundredths, always positive; kind gives the direction.
     amount: integer().notNull(),
     note: text().notNull().default(''),
     occurredOn: date('occurred_on', { mode: 'string' }).notNull(),
@@ -115,7 +115,7 @@ export const bill = pgTable(
       .notNull()
       .references(() => pocket.id, { onDelete: 'cascade' }),
     name: text().notNull(),
-    // Satang; null when it varies, then the last paid amount is set aside.
+    // Hundredths; null when it varies, then the last paid amount is set aside.
     amount: integer(),
     categoryId: uuid('category_id').references(() => category.id, { onDelete: 'set null' }),
     // The creator's account; accounts are private, so others pay it from none.

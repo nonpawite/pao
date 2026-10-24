@@ -91,7 +91,7 @@ export function BoardLine({ left, right, className }: { left: ReactNode; right?:
  * Size comes from the font size of `className`.
  */
 export function Flap({ text, dim, className }: { text: string; dim?: boolean; className?: string }) {
-  // A currency sign takes one tile however many characters it has: ฿, $, US$, CHF.
+  // A currency sign takes one tile however many characters it has: $, US$, CHF.
   const tiles = (text.match(/\p{L}+\p{Sc}?|./gsu) ?? []).map((ch) => ({
     ch,
     k: /^\d$/.test(ch) ? 'char' : /^[,.]$/.test(ch) ? 'sep' : /^\s$/.test(ch) ? 'gap' : 'sym',

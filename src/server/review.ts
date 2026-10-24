@@ -71,7 +71,7 @@ export const getReview = createServerFn({ method: 'GET' })
     const avgCycles = [1, 2, 3].filter((i) => per[i].count)
     const categories = cats
       .map((c) => {
-        // Averages over several cycles round to whole baht.
+        // Averages over several cycles round to whole units.
         const value = Math.round(sum(idx, (i) => per[i].byCategory.get(c.id) ?? 0) / idx.length / 100) * 100
         const average = avgCycles.length
           ? Math.round(sum(avgCycles, (i) => per[i].byCategory.get(c.id) ?? 0) / avgCycles.length / 100) * 100
