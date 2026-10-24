@@ -377,9 +377,9 @@ function DayCell({
   const { t, day } = useT()
   const color = useCategoryColor()
   const pocket = useActivePocket()
-  const { money, symbol } = useMoney()
+  const { money } = useMoney()
   // Cells are tight, so their amounts drop the currency sign.
-  const bare = (n: number) => money(n).replace(symbol, '').trim()
+  const bare = (n: number) => money(n, { symbol: false })
   const owed = bills.filter((b) => isOwed(b.state)).reduce((s, b) => s + worth(b), 0)
   const late = bills.some((b) => b.state === 'late')
   const tone = (b: Bill) => (b.state === 'late' ? 'text-over-text' : b.state === 'paid' || b.state === 'skipped' ? 'text-on-board-2' : '')

@@ -2,23 +2,33 @@
 
 import { locales } from './i18n.ts'
 
-const currencyStyle = (currency: string) => ({ style: 'currency', currency, currencyDisplay: 'narrowSymbol' }) as const
+const currencyStyle = (currency: string, currencyDisplay: 'narrowSymbol' | 'symbol' = 'narrowSymbol') =>
+  ({ style: 'currency', currency, currencyDisplay }) as const
 
 /** The decimals an amount in `currency` shows: its own (JPY 0, USD 2, KWD 3), at most 2. */
 const shownDigits = (currency: string) =>
   // Capped at 2 because amounts are integer hundredths (ADR 0001).
   Math.min(2, new Intl.NumberFormat('en', currencyStyle(currency)).resolvedOptions().maximumFractionDigits ?? 2)
 
-/** Format hundredths in `currency` for an Intl locale tag such as 'th-TH' or 'en-GB'. */
-export function formatMoney(hundredths: number, currency: string, locale: string, opts: { sign?: boolean } = {}) {
-  const abs = Math.abs(hundredths)
-  const style = currencyStyle(currency)
+/** A positive amount as Intl parts, with decimals only when it has some. */
+function moneyParts(abs: number, currency: string, locale: string) {
   const digits = shownDigits(currency)
-  const n = new Intl.NumberFormat(locale, {
-    ...style,
+  return new Intl.NumberFormat(locale, {
+    ...currencyStyle(currency),
     minimumFractionDigits: abs % 100 === 0 ? 0 : digits,
     maximumFractionDigits: digits,
-  }).format(abs / 100)
+  }).formatToParts(abs / 100)
+}
+
+/**
+ * Format hundredths in `currency` for an Intl locale tag such as 'th-TH' or 'en-GB'.
+ * `symbol: false` drops the currency sign and the space beside it, for tight cells: CHF 12 → 12.
+ */
+export function formatMoney(hundredths: number, currency: string, locale: string, opts: { sign?: boolean; symbol?: boolean } = {}) {
+  const n = moneyParts(Math.abs(hundredths), currency, locale)
+    .filter((p) => opts.symbol !== false || (p.type !== 'currency' && p.type !== 'literal'))
+    .map((p) => p.value)
+    .join('')
   const sign = hundredths < 0 ? '−' : opts.sign ? '+' : ''
   return `${sign}${n}`
 }
@@ -28,12 +38,14 @@ export function compactMoney(hundredths: number, currency: string, locale: strin
   const units = hundredths / 100
   const n = units >= 1000 ? `${(units / 1000).toFixed(units >= 10000 ? 0 : 1).replace(/\.0$/, '')}K` : `${Math.round(units)}`
   // The symbol sits where formatMoney puts it (฿0, CHF 0).
-  return formatMoney(0, currency, locale).replace('0', n)
+  return moneyParts(0, currency, locale)
+    .map((p) => (p.type === 'integer' ? n : p.value))
+    .join('')
 }
 
-/** The symbol formatMoney writes for `currency`: ฿, $, ¥, CHF. */
-export const currencySymbol = (currency: string, locale: string) =>
-  new Intl.NumberFormat(locale, { style: 'currency', currency, currencyDisplay: 'narrowSymbol' }).formatToParts(0).find((p) => p.type === 'currency')!.value
+/** The symbol formatMoney writes for `currency`: ฿, $, ¥, CHF. `'symbol'` gives the code-style one instead: US$. */
+export const currencySymbol = (currency: string, locale: string, display: 'narrowSymbol' | 'symbol' = 'narrowSymbol') =>
+  new Intl.NumberFormat(locale, currencyStyle(currency, display)).formatToParts(0).find((p) => p.type === 'currency')!.value
 
 let letterSymbols: Set<string> | undefined
 
@@ -43,9 +55,7 @@ function isLetterSymbol(s: string) {
   letterSymbols ??= new Set(
     Intl.supportedValuesOf('currency').flatMap((currency) => [
       currency,
-      ...Object.values(locales).map(
-        ({ tag }) => new Intl.NumberFormat(tag, { style: 'currency', currency }).formatToParts(0).find((p) => p.type === 'currency')!.value,
-      ),
+      ...Object.values(locales).map(({ tag }) => currencySymbol(currency, tag, 'symbol')),
     ]),
   )
   return letterSymbols.has(s.toUpperCase())

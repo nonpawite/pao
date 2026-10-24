@@ -49,7 +49,7 @@ export function useMoney(currency?: string) {
   const active = useActivePocket()
   const bound = currency ?? active.currency
   return {
-    money: (hundredths: number, opts: { sign?: boolean; currency?: string } = {}) => formatMoney(hundredths, opts.currency ?? bound, tag, opts),
+    money: (hundredths: number, opts: { sign?: boolean; symbol?: boolean; currency?: string } = {}) => formatMoney(hundredths, opts.currency ?? bound, tag, opts),
     compact: (hundredths: number) => compactMoney(hundredths, bound, tag),
     symbol: currencySymbol(bound, tag),
   }

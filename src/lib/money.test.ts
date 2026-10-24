@@ -99,6 +99,14 @@ test('parsing keeps the decimals the currency shows, so rows and totals agree', 
   assert.equal(parseAmount('12.55', 'USD'), 1_255)
 })
 
+test('tight cells can drop the currency sign', () => {
+  for (const locale of ['en-GB', 'th-TH']) {
+    assert.equal(formatMoney(123_450, 'THB', locale, { symbol: false }), '1,234.50')
+    assert.equal(formatMoney(1_200, 'CHF', locale, { symbol: false }), '12')
+    assert.equal(formatMoney(-500, 'USD', locale, { symbol: false }), '−5')
+  }
+})
+
 test('pockets in one currency give one total', () => {
   const pockets = [
     { currency: 'THB', total: 10_000 },
