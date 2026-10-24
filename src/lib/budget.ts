@@ -1,4 +1,5 @@
-// Pure date and limit math. Dates are local calendar days as 'YYYY-MM-DD'; money is integer hundredths.
+// Pure date and limit math, except householdDay, which reads APP_TZ and the clock. Dates are local calendar days as
+// 'YYYY-MM-DD'; money is integer hundredths.
 
 export type ISODate = string
 
