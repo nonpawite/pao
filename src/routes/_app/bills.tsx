@@ -8,11 +8,11 @@ import type { BillDraft } from '#/components/app/bill-form'
 import { BillRows } from '#/components/app/bills'
 import { Button } from '#/components/ui/button'
 import { useCategoryColor } from '#/components/app/charts'
-import { useActivePocket, useShell, useT } from '#/components/app/context'
+import { useActivePocket, useMoney, useShell, useT } from '#/components/app/context'
 import { PocketTabs } from '#/components/app/frame'
 import { Board, CategoryGlyph, Figure, PageTitle, Segmented, Tile, boardGrid, pageMain } from '#/components/app/kit'
 import { isOwed } from '#/lib/bills'
-import { addDays, daysInMonth, diffDays, formatBaht, iso, weekday } from '#/lib/budget'
+import { addDays, daysInMonth, diffDays, iso, weekday } from '#/lib/budget'
 import { locales, monthNames, ordinal } from '#/lib/i18n'
 import type { Locale } from '#/lib/i18n'
 import { cn } from '#/lib/utils'
@@ -97,6 +97,7 @@ const listCols = 'grid grid-cols-[minmax(0,1fr)_68px_60px] items-center gap-x-3 
 function ListView({ data, onEdit, onAdd }: { data: BillsPage; onEdit?: (b: Parameters<typeof draftFrom>[0]) => void; onAdd: (date?: string) => void }) {
   const { t, day, locale } = useT()
   const pocket = useActivePocket()
+  const { money } = useMoney()
   const cost = (b: BillsPage['bills'][number]) => b.amount ?? b.lastPaid ?? 0
   const perMonth = data.bills.filter((b) => b.repeat === 'monthly').reduce((s, b) => s + cost(b), 0)
   const perYear = perMonth * 12 + data.bills.filter((b) => b.repeat === 'yearly').reduce((s, b) => s + cost(b), 0)
@@ -141,10 +142,10 @@ function ListView({ data, onEdit, onAdd }: { data: BillsPage; onEdit?: (b: Param
         aside={data.bills.length === 1 ? t('billOne') : t('billCount', { n: data.bills.length })}
         className="lg:col-span-2 lg:col-start-5 lg:row-start-1"
       >
-        <span className="font-board text-[32px] leading-none font-semibold">{formatBaht(perMonth)}</span>
+        <span className="font-board text-[32px] leading-none font-semibold">{money(perMonth)}</span>
         <dl className="grid gap-2 font-board text-[12px] font-semibold">
-          <Fact label={t('aYear')} value={formatBaht(perYear)} />
-          <Fact label={t('toPayCycle')} value={formatBaht(toPay)} />
+          <Fact label={t('aYear')} value={money(perYear)} />
+          <Fact label={t('toPayCycle')} value={money(toPay)} />
         </dl>
         {onEdit && pocket.categories.length > 0 && (
           <button
@@ -191,7 +192,7 @@ function ListView({ data, onEdit, onAdd }: { data: BillsPage; onEdit?: (b: Param
             </span>
             <span className="caps hidden text-[12px] text-on-board-2 lg:block">{when(b)}</span>
             <span className="text-right font-board text-[17px] font-semibold">
-              {b.amount !== null ? formatBaht(b.amount) : <span className="text-[13px] text-on-board-2">{t('varies')}</span>}
+              {b.amount !== null ? money(b.amount) : <span className="text-[13px] text-on-board-2">{t('varies')}</span>}
             </span>
             <span className="caps text-right text-[12px] text-on-board-2">{next(b)}</span>
           </button>
@@ -246,6 +247,7 @@ function CalendarView({ data, onEdit, onAdd }: { data: BillsPage; onEdit?: (b: P
   const shell = useShell()
   const pocket = useActivePocket()
   const { t, day, locale } = useT()
+  const { money } = useMoney()
   const [picked, setPicked] = useState<string | null>(null)
   const owner = pocket.role === 'owner'
 
@@ -307,7 +309,7 @@ function CalendarView({ data, onEdit, onAdd }: { data: BillsPage; onEdit?: (b: P
       {/* The month's figures and its bills stack beside the grid, each as tall as its content. */}
       <div className="grid content-start gap-3 lg:col-span-2 lg:gap-4">
         <Tile title={t('billsInMonth', { month: monthLabel(data.month, locale) })} aside={data.monthBills.length === 1 ? t('billOne') : t('billCount', { n: data.monthBills.length })}>
-          <Figure text={formatBaht(total)} className="text-[30px]" />
+          <Figure text={money(total)} className="text-[30px]" />
           {total > 0 && (
             <span aria-hidden className="flex h-1 bg-board-line">
               <span className="bg-ink" style={{ width: `${(paid / total) * 100}%` }} />
@@ -315,9 +317,9 @@ function CalendarView({ data, onEdit, onAdd }: { data: BillsPage; onEdit?: (b: P
             </span>
           )}
           <dl className="grid gap-2 text-[13px]">
-            <Fact label={t('paidLabel')} value={formatBaht(paid)} />
-            <Fact label={t('toPay')} value={formatBaht(toPay)} />
-            <Fact label={t('biggestDay')} value={biggest && biggest.sum > 0 ? `${day(biggest.d)} · ${formatBaht(biggest.sum)}` : '—'} />
+            <Fact label={t('paidLabel')} value={money(paid)} />
+            <Fact label={t('toPay')} value={money(toPay)} />
+            <Fact label={t('biggestDay')} value={biggest && biggest.sum > 0 ? `${day(biggest.d)} · ${money(biggest.sum)}` : '—'} />
           </dl>
         </Tile>
 
@@ -389,6 +391,9 @@ function DayCell({
   const { t, day } = useT()
   const color = useCategoryColor()
   const pocket = useActivePocket()
+  const { money, symbol } = useMoney()
+  // Cells are tight, so their amounts drop the currency sign.
+  const bare = (n: number) => money(n).replace(symbol, '').trim()
   const owed = bills.filter((b) => isOwed(b.state)).reduce((s, b) => s + worth(b), 0)
   const late = bills.some((b) => b.state === 'late')
   const tone = (b: Bill) => (b.state === 'late' ? 'text-over-text' : b.state === 'paid' || b.state === 'skipped' ? 'text-on-board-2' : '')
@@ -406,7 +411,7 @@ function DayCell({
         payday && inMonth ? payday : null,
         ...bills.map((b) => {
           const state = b.state === 'late' ? t('billLateShort') : b.state === 'paid' ? t('billPaid') : b.state === 'skipped' ? t('billSkipped') : null
-          return [b.name, formatBaht(worth(b)), state].filter(Boolean).join(' ')
+          return [b.name, money(worth(b)), state].filter(Boolean).join(' ')
         }),
       ]
         .filter(Boolean)
@@ -447,7 +452,7 @@ function DayCell({
             ))}
           </span>
           {owed > 0 && (
-            <span className={cn('font-board text-[11px] font-semibold', late ? 'text-over-text' : 'text-on-board-2')}>{formatBaht(owed).replace('฿', '')}</span>
+            <span className={cn('font-board text-[11px] font-semibold', late ? 'text-over-text' : 'text-on-board-2')}>{bare(owed)}</span>
           )}
         </span>
       )}
@@ -473,7 +478,7 @@ function DayCell({
             <span className="truncate">{b.name}</span>
             <span className="col-start-2 font-board text-[11px] font-semibold">
               {b.amount === null && b.state !== 'paid' ? '~' : ''}
-              {formatBaht(worth(b)).replace('฿', '')}
+              {bare(worth(b))}
               {b.state === 'paid' ? ' ✓' : ''}
             </span>
           </span>

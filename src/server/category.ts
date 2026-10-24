@@ -48,6 +48,7 @@ export const getCategoryDetail = createServerFn({ method: 'GET' })
       pocketName: p.name,
       pocketColor: p.color,
       pocketKind: p.kind,
+      currency: p.currency,
       canEdit: p.role === 'owner',
       pocketId: c.pocketId,
       today,

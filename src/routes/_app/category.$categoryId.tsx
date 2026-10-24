@@ -2,11 +2,11 @@ import { Link, createFileRoute, notFound, useCanGoBack, useRouter } from '@tanst
 import { CaretLeft } from '@phosphor-icons/react'
 import type { ReactNode } from 'react'
 
-import { useShell, useT } from '#/components/app/context'
+import { useMoney, useShell, useT } from '#/components/app/context'
 import { EntryRows } from '#/components/app/entry-list'
 import { PocketChip } from '#/components/app/frame'
 import { Board, BoardLine, CategoryGlyph, Figure, Group, LimitBar, Row, Status, pageMain, useDocumentTitle } from '#/components/app/kit'
-import { formatBaht, weekday } from '#/lib/budget'
+import { weekday } from '#/lib/budget'
 import { weekdayInitials } from '#/lib/i18n'
 import { cn } from '#/lib/utils'
 import { getCategoryDetail } from '#/server/category'
@@ -25,15 +25,17 @@ const navLink = 'caps flex h-11 items-center text-[13px] text-ink hover:underlin
 function Category() {
   const c = Route.useLoaderData()
   const { t, range } = useT()
+  // The category's pocket, which can differ from the active one.
+  const { money } = useMoney(c.currency)
   const router = useRouter()
   // Back returns to wherever the category was opened from (Today, Review, Spending); a fresh tab goes to Today.
   const canGoBack = useCanGoBack()
   useDocumentTitle(c.name)
   const sub =
     c.limitType === 'day'
-      ? `${t('aDay', { amount: formatBaht(c.limit) })} · ${t('resetsMidnight')}`
+      ? `${t('aDay', { amount: money(c.limit) })} · ${t('resetsMidnight')}`
       : c.limitType === 'cycle'
-        ? `${t('aCycle', { amount: formatBaht(c.limit) })} · ${range(c.cycle.start, c.cycle.end)}`
+        ? `${t('aCycle', { amount: money(c.limit) })} · ${range(c.cycle.start, c.cycle.end)}`
         : `${t('noLimit')} · ${range(c.cycle.start, c.cycle.end)}`
 
   return (
@@ -69,7 +71,7 @@ function Category() {
       {c.day && <DayView c={c} />}
       {c.cycleLimit && <CycleView c={c} />}
       {!c.day && !c.cycleLimit && (
-        <CategoryBoard c={c} figure={formatBaht(c.spent)} qualifier={t('spent')} />
+        <CategoryBoard c={c} figure={money(c.spent)} qualifier={t('spent')} />
       )}
 
       <Entries c={c} />
@@ -119,6 +121,7 @@ function DayView({ c }: { c: CategoryDetail }) {
   const d = c.day!
   const shell = useShell()
   const { t, day, locale } = useT()
+  const { money } = useMoney(c.currency)
   // The grid starts on the user's own first weekday, as the Bills calendar does.
   const start = shell.user.weekStart
   const lead = (weekday(c.cycle.start) - start + 7) % 7
@@ -129,13 +132,13 @@ function DayView({ c }: { c: CategoryDetail }) {
     <>
       <CategoryBoard
         c={c}
-        figure={formatBaht(Math.abs(d.left))}
+        figure={money(Math.abs(d.left))}
         qualifier={d.left < 0 ? t('over') : t('leftToday')}
         over={d.left < 0}
         foot={
           <>
             <LimitBar spent={d.spentToday} limit={c.limit} state={d.state} onBoard className="mt-5" />
-            <BoardLine className="mt-2.5" left={t('spentToday', { amount: formatBaht(d.spentToday) })} right={t('aDay', { amount: formatBaht(c.limit) })} />
+            <BoardLine className="mt-2.5" left={t('spentToday', { amount: money(d.spentToday) })} right={t('aDay', { amount: money(c.limit) })} />
           </>
         }
       />
@@ -170,8 +173,8 @@ function DayView({ c }: { c: CategoryDetail }) {
             ))}
           </div>
           <div className="grid grid-cols-3 border-t border-rule pt-3">
-            <Stat label={t('spent')} value={formatBaht(c.spent)} />
-            <Stat label={t('avgADay')} value={formatBaht(d.avgPerDay)} />
+            <Stat label={t('spent')} value={money(c.spent)} />
+            <Stat label={t('avgADay')} value={money(d.avgPerDay)} />
             <Stat
               label={t('overDays')}
               value={t('overDaysValue', { n: d.overDays, total: d.pastDays })}
@@ -187,11 +190,12 @@ function DayView({ c }: { c: CategoryDetail }) {
 function CycleView({ c }: { c: CategoryDetail }) {
   const l = c.cycleLimit!
   const { t } = useT()
+  const { money } = useMoney(c.currency)
   return (
     <>
       <CategoryBoard
         c={c}
-        figure={formatBaht(Math.abs(l.left))}
+        figure={money(Math.abs(l.left))}
         qualifier={l.state === 'over' ? t('over') : t('leftThisCycle')}
         over={l.state === 'over'}
         status={<Status state={l.state} onBoard />}
@@ -200,15 +204,15 @@ function CycleView({ c }: { c: CategoryDetail }) {
             <LimitBar spent={c.spent} limit={c.limit} pace={l.pace} state={l.state} onBoard className="mt-5" />
             <BoardLine
               className="mt-2.5"
-              left={`${t('spent')} ${formatBaht(c.spent)}`}
-              right={t('todaysPace', { amount: formatBaht(l.pace) })}
+              left={`${t('spent')} ${money(c.spent)}`}
+              right={t('todaysPace', { amount: money(l.pace) })}
             />
           </>
         }
       />
       {l.state !== 'over' && (
         <Group title={t('toStayUnder')}>
-          <Row className="text-[15px]">{t('perDayLeft', { amount: formatBaht(l.perDayToStayUnder), n: c.daysLeft })}</Row>
+          <Row className="text-[15px]">{t('perDayLeft', { amount: money(l.perDayToStayUnder), n: c.daysLeft })}</Row>
         </Group>
       )}
     </>
@@ -227,9 +231,10 @@ function Stat({ label, value, className }: { label: string; value: string; class
 /** The cycle's entries by day, editable like every other list; a per-day limit shows each day against it. */
 function Entries({ c }: { c: CategoryDetail }) {
   const { t } = useT()
+  const { money } = useMoney(c.currency)
   if (!c.days.length) return null
   const entries = c.days.flatMap((d) =>
-    d.entries.map((e) => ({ ...e, kind: 'expense' as const, categoryName: c.name, pocketId: c.pocketId })),
+    d.entries.map((e) => ({ ...e, kind: 'expense' as const, categoryName: c.name, pocketId: c.pocketId, currency: c.currency })),
   )
   return (
     <Group title={t('entries')}>
@@ -241,8 +246,8 @@ function Entries({ c }: { c: CategoryDetail }) {
           grouped
           dayAside={(_, spent) => (
             <span className={cn(c.limitType === 'day' && spent > c.limit && 'text-over-text')}>
-              {formatBaht(spent)}
-              {c.limitType === 'day' && ` / ${formatBaht(c.limit)}`}
+              {money(spent)}
+              {c.limitType === 'day' && ` / ${money(c.limit)}`}
             </span>
           )}
         />
