@@ -7,11 +7,11 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/compone
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { nextDue } from '#/lib/bills'
-import { parseAmount } from '#/lib/budget'
 import { monthNames, ordinal } from '#/lib/i18n'
+import { parseAmount } from '#/lib/money'
 import { cn } from '#/lib/utils'
 import { deleteBill, saveBill } from '#/server/bills'
-import { useActivePocket, useShell, useT } from './context'
+import { useActivePocket, useMoney, useShell, useT } from './context'
 import { Segmented, glyphFor } from './kit'
 import { Picker } from './picker'
 
@@ -89,6 +89,7 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
   const router = useRouter()
   const { t, day, locale } = useT()
   const { dayOptions, dayName } = useDays()
+  const { symbol } = useMoney()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [confirming, setConfirming] = useState(false)
@@ -156,7 +157,7 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
                 <Input
                   id="bill-amount"
                   inputMode="decimal"
-                  placeholder="฿"
+                  placeholder={symbol}
                   required={!draft.varies}
                   disabled={draft.varies}
                   value={draft.varies ? '' : draft.amount}

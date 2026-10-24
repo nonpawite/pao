@@ -6,12 +6,12 @@ import { Button } from '#/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/components/ui/dialog'
 import { isOwed } from '#/lib/bills'
 import type { BillState } from '#/lib/bills'
-import { diffDays, formatBaht } from '#/lib/budget'
+import { diffDays } from '#/lib/budget'
 import { cn } from '#/lib/utils'
 import { payBill, skipBill } from '#/server/bills'
 import { deleteEntry } from '#/server/entries'
 import { useAddEntry } from './add-entry'
-import { useActivePocket, useT } from './context'
+import { useActivePocket, useMoney, useT } from './context'
 
 export type Bill = {
   id: string
@@ -33,6 +33,7 @@ function usePayBill() {
   const { t } = useT()
   const { pay } = useAddEntry()
   const pocket = useActivePocket()
+  const { money } = useMoney()
   const [busy, setBusy] = useState(false)
   async function run(b: Bill) {
     if (b.amount === null) return pay({ pocketId: pocket.id, billId: b.id, dueOn: b.due!, name: b.name, categoryId: b.categoryId })
@@ -41,7 +42,7 @@ function usePayBill() {
     try {
       const { id } = await payBill({ data: { id: b.id, dueOn: b.due! } })
       await router.invalidate()
-      toast(t('paidBill', { name: b.name, amount: formatBaht(b.amount) }), {
+      toast(t('paidBill', { name: b.name, amount: money(b.amount) }), {
         duration: 10000,
         action: {
           label: t('undo'),
@@ -67,6 +68,7 @@ function usePayBill() {
 export function BillRows({ bills, today, onEdit }: { bills: Bill[]; today: string; onEdit?: (b: Bill) => void }) {
   const { t, day } = useT()
   const pocket = useActivePocket()
+  const { money } = useMoney()
   const router = useRouter()
   const paying = usePayBill()
   const [picked, setPicked] = useState<Bill | null>(null)
@@ -97,7 +99,7 @@ export function BillRows({ bills, today, onEdit }: { bills: Bill[]; today: strin
                 {t('markPaid')}
               </button>
             ) : (
-              <span className="w-[52px] text-right font-board text-[15px] font-semibold text-on-board-2">{formatBaht(b.paidAmount ?? b.amount ?? 0)}</span>
+              <span className="w-[52px] text-right font-board text-[15px] font-semibold text-on-board-2">{money(b.paidAmount ?? b.amount ?? 0)}</span>
             )}
           </div>
         ))}
@@ -107,7 +109,7 @@ export function BillRows({ bills, today, onEdit }: { bills: Bill[]; today: strin
         <DialogContent className="max-w-sm">
           <DialogTitle>{picked?.name}</DialogTitle>
           <DialogDescription>
-            {picked && `${picked.amount !== null ? formatBaht(picked.amount) : t('varies')} · ${t('dueOn', { date: day(picked.due!) })}`}
+            {picked && `${picked.amount !== null ? money(picked.amount) : t('varies')} · ${t('dueOn', { date: day(picked.due!) })}`}
           </DialogDescription>
           {picked && (
             <div className="grid gap-2">
