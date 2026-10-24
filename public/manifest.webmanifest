@@ -1,7 +1,7 @@
 {
-  "name": "Expense tracker",
-  "short_name": "Expenses",
-  "description": "Family expense tracker with per-day and per-cycle limits.",
+  "name": "Pao",
+  "short_name": "Pao",
+  "description": "Household expense tracker with per-day and per-cycle limits.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
