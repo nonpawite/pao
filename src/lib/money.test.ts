@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { currencySymbol, defaultCurrency, formatMoney, isCurrency, parseAmount, totalsByCurrency } from './money.ts'
+import { compactMoney, currencySymbol, defaultCurrency, formatMoney, isCurrency, parseAmount, totalsByCurrency } from './money.ts'
 
 test('THB looks the same in English and Thai', () => {
   for (const locale of ['en-GB', 'th-TH']) {
@@ -39,6 +39,24 @@ test('KWD is limited to 2 decimals', () => {
     assert.equal(formatMoney(1_250, 'KWD', locale), 'KWD\u00a012.50')
     assert.equal(formatMoney(1_200, 'KWD', locale), 'KWD\u00a012')
     assert.equal(formatMoney(1_250, 'KWD', locale, { sign: true }), '+KWD\u00a012.50')
+  }
+})
+
+test('THB axis ticks shorten thousands to K, the same in English and Thai', () => {
+  for (const locale of ['en-GB', 'th-TH']) {
+    assert.equal(compactMoney(0, 'THB', locale), '\u0e3f0')
+    assert.equal(compactMoney(85_000, 'THB', locale), '\u0e3f850')
+    assert.equal(compactMoney(100_000, 'THB', locale), '\u0e3f1K')
+    assert.equal(compactMoney(128_400, 'THB', locale), '\u0e3f1.3K')
+    assert.equal(compactMoney(1_500_000, 'THB', locale), '\u0e3f15K')
+  }
+})
+
+test('axis ticks write the pocket currency where its amounts put it', () => {
+  for (const locale of ['en-GB', 'th-TH']) {
+    assert.equal(compactMoney(85_000, 'JPY', locale), '\u00a5850')
+    assert.equal(compactMoney(4_500_000, 'JPY', locale), '\u00a545K')
+    assert.equal(compactMoney(128_400, 'CHF', locale), 'CHF\u00a01.3K')
   }
 })
 

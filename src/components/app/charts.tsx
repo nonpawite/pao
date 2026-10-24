@@ -1,10 +1,10 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { PointerEvent, ReactNode } from 'react'
 
-import { addDays, formatBaht } from '#/lib/budget'
+import { addDays } from '#/lib/budget'
 import { monthNames } from '#/lib/i18n'
 import { cn } from '#/lib/utils'
-import { useActivePocket, useShell, useT } from './context'
+import { useActivePocket, useMoney, useShell, useT } from './context'
 import { DotsThree } from '@phosphor-icons/react'
 
 import { Figure, glyphFor } from './kit'
@@ -23,14 +23,7 @@ function useWidth(fallback: number) {
   return [ref, width] as const
 }
 
-const wholeBaht = (satang: number) => Math.round(satang / 100) * 100
-
-/** ฿1,284 → ฿1.3K for axis ticks. */
-function compact(satang: number) {
-  const baht = satang / 100
-  if (baht >= 1000) return `฿${(baht / 1000).toFixed(baht >= 10000 ? 0 : 1).replace(/\.0$/, '')}K`
-  return `฿${Math.round(baht)}`
-}
+const wholeUnits = (hundredths: number) => Math.round(hundredths / 100) * 100
 
 /** A tick step of 1, 2 or 5 × 10^n that gives about `count` gridlines. */
 function niceStep(max: number, count: number) {
@@ -96,6 +89,7 @@ type Part = { id: string; name: string; value: number; color: string; slot: numb
 /** Part-to-whole: the biggest categories by size in the legend, each in its own colour; the rest folded into Other. */
 export function WhereItWent({ categories, otherLabel }: { categories: Array<{ id: string; name: string; value: number }>; otherLabel: string }) {
   const slotOf = useCategorySlot()
+  const { money } = useMoney()
   const shown = categories.filter((c) => c.value > 0)
   const total = shown.reduce((s, c) => s + c.value, 0)
   const [active, setActive] = useState<string | null>(null)
@@ -118,7 +112,7 @@ export function WhereItWent({ categories, otherLabel }: { categories: Array<{ id
         <Donut parts={ring} total={total} active={active} onActive={setActive}>
           <span className="caps max-w-[7rem] truncate text-[11px] text-on-board-2">{focus.name}</span>
           <Figure text={`${pct(focus.value)}%`} className="text-[26px]" />
-          <span className="font-board text-[13px] text-on-board-2">{formatBaht(focus.value)}</span>
+          <span className="font-board text-[13px] text-on-board-2">{money(focus.value)}</span>
         </Donut>
         <ul className="grid">
           {parts.map((p) => {
@@ -136,7 +130,7 @@ export function WhereItWent({ categories, otherLabel }: { categories: Array<{ id
                 <i aria-hidden className="size-2.5 rounded-xs" style={{ background: p.color }} />
                 <span aria-hidden className="grid place-items-center text-on-board-2">{G && <G className="size-4" />}</span>
                 <span className="truncate text-[15px]">{p.name}</span>
-                <span className="text-right font-board text-[15px] font-semibold">{formatBaht(p.value)}</span>
+                <span className="text-right font-board text-[15px] font-semibold">{money(p.value)}</span>
                 <span className="text-right font-board text-[13px] text-on-board-2">{pct(p.value)}%</span>
               </li>
             )
@@ -223,6 +217,7 @@ export function RunningTotal({
   end: string
 }) {
   const { t, day } = useT()
+  const { money, compact } = useMoney()
   const [ref, width] = useWidth(340)
   const [hover, setHover] = useState<number | null>(null)
   const H = 200
@@ -281,7 +276,7 @@ export function RunningTotal({
               textAnchor={x(last) > pad.l + w - 60 ? 'end' : 'middle'}
               className="fill-on-board font-board text-[13px] font-semibold"
             >
-              {formatBaht(current[last])}
+              {money(current[last])}
             </text>
           </>
         )}
@@ -309,9 +304,9 @@ export function RunningTotal({
           style={{ left: tipLeft }}
         >
           <span className="caps text-[11px] text-on-board-2">{day(addDays(start, hover))}</span>
-          {hover <= last && <TipRow color="var(--series)" label={t('thisCycle')} value={formatBaht(current[hover])} />}
-          {previous && previous[hover] !== undefined && <TipRow color="var(--chart-muted)" label={t('lastCycle')} value={formatBaht(previous[hover])} />}
-          {plan && hover < length && <TipRow color="var(--on-board-2)" dashed label={t('plan')} value={formatBaht(wholeBaht(planAt(hover)!))} />}
+          {hover <= last && <TipRow color="var(--series)" label={t('thisCycle')} value={money(current[hover])} />}
+          {previous && previous[hover] !== undefined && <TipRow color="var(--chart-muted)" label={t('lastCycle')} value={money(previous[hover])} />}
+          {plan && hover < length && <TipRow color="var(--on-board-2)" dashed label={t('plan')} value={money(wholeUnits(planAt(hover)!))} />}
         </div>
       )}
       <div className="caps mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-on-board-2">
@@ -323,9 +318,9 @@ export function RunningTotal({
         head={[t('date'), t('thisCycle'), t('lastCycle'), t('plan')]}
         rows={Array.from({ length: days }, (_, d) => [
           day(addDays(start, d)),
-          d <= last ? formatBaht(current[d]) : '',
-          previous?.[d] !== undefined ? formatBaht(previous[d]) : '',
-          plan && d < length ? formatBaht(wholeBaht(planAt(d)!)) : '',
+          d <= last ? money(current[d]) : '',
+          previous?.[d] !== undefined ? money(previous[d]) : '',
+          plan && d < length ? money(wholeUnits(planAt(d)!)) : '',
         ])}
       />
     </div>
@@ -354,6 +349,7 @@ function TipRow({ color, label, value, dashed }: { color: string; label: string;
 
 /** Average spend per weekday; the costliest day (or the hovered one) is the ink bar and the one label, the rest step back. */
 export function WeekdayBars({ values, names }: { values: number[]; names: string[] }) {
+  const { money } = useMoney()
   const [hover, setHover] = useState<number | null>(null)
   const max = Math.max(...values, 1)
   const top = values.indexOf(Math.max(...values))
@@ -365,7 +361,7 @@ export function WeekdayBars({ values, names }: { values: number[]; names: string
         <button
           key={i}
           type="button"
-          aria-label={`${names[i]} ${formatBaht(v)}`}
+          aria-label={`${names[i]} ${money(v)}`}
           onPointerEnter={() => setHover(i)}
           onFocus={() => setHover(i)}
           onBlur={() => setHover(null)}
@@ -374,7 +370,7 @@ export function WeekdayBars({ values, names }: { values: number[]; names: string
           <span className="relative flex w-full items-end justify-center">
             {shownLabel === i && (
               <span className="absolute font-board text-[12px] font-semibold whitespace-nowrap" style={{ bottom: `calc(${(v / max) * 100}% + 4px)` }}>
-                {formatBaht(v)}
+                {money(v)}
               </span>
             )}
             <span
@@ -402,6 +398,7 @@ type Bar = { start: string; spent: number; current: boolean; hasData: boolean }
  */
 export function CycleBars({ bars, cycle, className }: { bars: Bar[]; cycle: { dayIndex: number; length: number }; className?: string }) {
   const { t, locale } = useT()
+  const { money } = useMoney()
   // A cycle like 25 Sep – 24 Oct is mostly October: label it by its middle.
   const monthOf = (start: string) => monthNames(locale)[Number(addDays(start, 15).slice(5, 7)) - 1]
   const first = bars.findIndex((b) => b.hasData || b.current)
@@ -415,11 +412,11 @@ export function CycleBars({ bars, cycle, className }: { bars: Bar[]; cycle: { da
       <div
         className={cn('flex items-end gap-2', className)}
         role="img"
-        aria-label={`${t('spentPerCycle')}: ${shown.map((b) => `${b.current ? t('thisCycle') : monthOf(b.start)} ${formatBaht(b.spent)}`).join(', ')}`}
+        aria-label={`${t('spentPerCycle')}: ${shown.map((b) => `${b.current ? t('thisCycle') : monthOf(b.start)} ${money(b.spent)}`).join(', ')}`}
       >
         {shown.map((b) => (
           <div key={b.start} className="grid h-full flex-1 grid-rows-[auto_1fr_auto] gap-1.5 text-center">
-            <span className={cn('truncate font-board text-[12px] font-semibold', b.current ? 'text-on-board' : 'text-on-board-2')}>{formatBaht(b.spent)}</span>
+            <span className={cn('truncate font-board text-[12px] font-semibold', b.current ? 'text-on-board' : 'text-on-board-2')}>{money(b.spent)}</span>
             {/* Columns stay 24px wide at most; the column's leftover width is air. */}
             <div className="relative mx-auto flex w-full max-w-6 items-end">
               {b.current && (
@@ -443,7 +440,7 @@ export function CycleBars({ bars, cycle, className }: { bars: Bar[]; cycle: { da
       {pace && (
         <span className="caps flex items-center gap-2 text-[11px] text-on-board-2">
           <i aria-hidden className="size-3 rounded-xs border-2 border-dashed border-series-hi" />
-          {t('atThisPace', { amount: formatBaht(pace) })}
+          {t('atThisPace', { amount: money(pace) })}
         </span>
       )}
     </div>
