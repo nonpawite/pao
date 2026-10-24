@@ -22,6 +22,8 @@ export const pocket = pgTable('pocket', {
   kind: text({ enum: ['personal', 'shared'] }).notNull(),
   // 1-31; a day past the month's end means the last day of that month.
   cycleStartDay: integer('cycle_start_day').notNull(),
+  // ISO 4217 code. Amounts are never converted: changing it only relabels them (ADR 0001).
+  currency: text().notNull(),
   createdBy: text('created_by')
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),

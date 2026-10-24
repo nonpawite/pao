@@ -17,6 +17,10 @@ export function formatMoney(hundredths: number, currency: string, locale: string
   return `${sign}${n}`
 }
 
+/** The symbol formatMoney writes for `currency`: ฿, $, ¥, CHF. */
+export const currencySymbol = (currency: string, locale: string) =>
+  new Intl.NumberFormat(locale, { style: 'currency', currency, currencyDisplay: 'narrowSymbol' }).formatToParts(0).find((p) => p.type === 'currency')!.value
+
 let letterSymbols: Set<string> | undefined
 
 /** ISO codes (USD, CHF) and code-style symbols (US$, HK$) for every currency the platform knows. */
@@ -52,4 +56,16 @@ export function totalsByCurrency(pockets: CurrencyTotal[]): CurrencyTotal[] {
   const totals = new Map<string, number>()
   for (const p of pockets) totals.set(p.currency, (totals.get(p.currency) ?? 0) + p.total)
   return [...totals].map(([currency, total]) => ({ currency, total }))
+}
+
+/** Every ISO 4217 code the platform supports, A to Z: the choices for a pocket's currency. */
+export const currencies = Intl.supportedValuesOf('currency')
+
+/** True for an ISO 4217 code the platform knows ('JPY'), false for anything else ('jpy', 'BAHT'). */
+export const isCurrency = (code: string) => currencies.includes(code)
+
+/** The instance's DEFAULT_CURRENCY setting as a code; unset or unknown falls back to USD, a neutral default like UTC. */
+export function defaultCurrency(setting: string | undefined) {
+  const code = setting?.trim().toUpperCase() ?? ''
+  return isCurrency(code) ? code : 'USD'
 }

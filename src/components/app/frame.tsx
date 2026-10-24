@@ -4,12 +4,11 @@ import type { Icon } from '@phosphor-icons/react'
 import { useLayoutEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 
-import { formatBaht } from '#/lib/budget'
 import { pocketBg } from '#/lib/colors'
 import { cn } from '#/lib/utils'
 import { setActivePocket } from '#/server/shell'
 import type { Shell } from '#/server/shell'
-import { useActivePocket, useShell, useT } from './context'
+import { useActivePocket, useMoney, useShell, useT } from './context'
 import { Avatar } from './kit'
 
 type Pocket = Shell['pockets'][number]
@@ -108,6 +107,7 @@ function PocketSwitch() {
   const switchTo = useSwitchPocket()
   const headline = useHeadline()
   const { t } = useT()
+  const { money } = useMoney()
   const menu = useRef<HTMLDivElement>(null)
   const single = shell.pockets.length < 2
   return (
@@ -149,7 +149,7 @@ function PocketSwitch() {
                 {on && <Check aria-hidden className="size-4 shrink-0" />}
               </span>
               <span className={cn('truncate pl-4 text-[12px]', h.over ? 'text-over-text' : 'text-ink-2')}>
-                <span className="font-board">{formatBaht(h.amount)}</span> {h.label}
+                <span className="font-board">{money(h.amount, { currency: p.currency })}</span> {h.label}
               </span>
             </button>
           )
@@ -183,6 +183,7 @@ export function Sidebar({ onAdd }: { onAdd: () => void }) {
   const pocket = useActivePocket()
   const headline = useHeadline()
   const { t } = useT()
+  const { money } = useMoney()
   const h = headline(pocket)
   const spentCycle = pocket.categories.reduce((s, c) => s + c.spentCycle, 0)
   const spentToday = pocket.categories.reduce((s, c) => s + c.spentToday, 0)
@@ -194,20 +195,20 @@ export function Sidebar({ onAdd }: { onAdd: () => void }) {
       <PocketSwitch />
 
       <nav aria-label={t('mainNav')} className="grid gap-0.5">
-        <NavTile to="/" label={t('today')} Icon={CalendarCheck} figure={formatBaht(h.amount)} sub={h.label} subClass={h.over ? 'text-over-text' : undefined} />
+        <NavTile to="/" label={t('today')} Icon={CalendarCheck} figure={money(h.amount)} sub={h.label} subClass={h.over ? 'text-over-text' : undefined} />
         <NavTile
           to="/review"
           label={t('review')}
           Icon={ChartBar}
-          figure={formatBaht(spentCycle)}
+          figure={money(spentCycle)}
           sub={t('spentCycleLabel')}
         />
-        <NavTile to="/spending" label={t('spending')} Icon={ListMagnifyingGlass} figure={formatBaht(spentToday)} sub={t('spentTodayLabel')} />
+        <NavTile to="/spending" label={t('spending')} Icon={ListMagnifyingGlass} figure={money(spentToday)} sub={t('spentTodayLabel')} />
         <NavTile
           to="/bills"
           label={t('bills')}
           Icon={Receipt}
-          figure={pocket.dueBills.length ? formatBaht(pocket.dueBills.reduce((s, b) => s + (b.amount ?? 0), 0)) : undefined}
+          figure={pocket.dueBills.length ? money(pocket.dueBills.reduce((s, b) => s + (b.amount ?? 0), 0)) : undefined}
           sub={lateBills > 0 ? t('nLate', { n: lateBills }) : pocket.dueBills.length ? t('toPayCycle') : t('nothingToPay')}
           subClass={lateBills > 0 ? 'text-over-text' : undefined}
         />

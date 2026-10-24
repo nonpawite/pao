@@ -1,7 +1,8 @@
 import { createContext, useContext } from 'react'
 
-import { formatDay, translate } from '#/lib/i18n'
+import { formatDay, locales, translate } from '#/lib/i18n'
 import type { Locale, MessageKey } from '#/lib/i18n'
+import { currencySymbol, formatMoney } from '#/lib/money'
 import type { Shell } from '#/server/shell'
 
 const ShellContext = createContext<Shell | null>(null)
@@ -33,4 +34,18 @@ export const useLocale = (): Locale => useContext(ShellContext)?.user.locale ?? 
 export function useActivePocket() {
   const shell = useShell()
   return shell.pockets.find((p) => p.id === shell.activePocketId) ?? shell.pockets[0]
+}
+
+/**
+ * Amounts in the member's language and a pocket's currency: the active pocket's, or `currency` when given.
+ * `money(n, { currency })` writes one amount in another pocket's currency.
+ */
+export function useMoney(currency?: string) {
+  const tag = locales[useShell().user.locale].tag
+  const active = useActivePocket()
+  const bound = currency ?? active.currency
+  return {
+    money: (hundredths: number, opts: { sign?: boolean; currency?: string } = {}) => formatMoney(hundredths, opts.currency ?? bound, tag, opts),
+    symbol: currencySymbol(bound, tag),
+  }
 }

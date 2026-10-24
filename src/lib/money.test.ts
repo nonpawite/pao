@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { formatMoney, parseAmount, totalsByCurrency } from './money.ts'
+import { currencySymbol, defaultCurrency, formatMoney, isCurrency, parseAmount, totalsByCurrency } from './money.ts'
 
 test('THB looks the same in English and Thai', () => {
   for (const locale of ['en-GB', 'th-TH']) {
@@ -92,4 +92,26 @@ test('mixed currencies give one total each, never a sum', () => {
 
 test('no pockets give no totals', () => {
   assert.deepEqual(totalsByCurrency([]), [])
+})
+
+test('a currency is an ISO 4217 code the platform knows', () => {
+  for (const code of ['THB', 'USD', 'JPY', 'CHF', 'KWD']) assert.equal(isCurrency(code), true)
+  for (const code of ['', 'thb', 'BAHT', 'XYZ', '฿', 'TH']) assert.equal(isCurrency(code), false)
+})
+
+test('the instance default currency falls back to USD when unset or unknown', () => {
+  assert.equal(defaultCurrency('JPY'), 'JPY')
+  assert.equal(defaultCurrency(' thb '), 'THB')
+  assert.equal(defaultCurrency(undefined), 'USD')
+  assert.equal(defaultCurrency(''), 'USD')
+  assert.equal(defaultCurrency('BAHT'), 'USD')
+})
+
+test('the currency symbol is the one formatted amounts use', () => {
+  for (const locale of ['en-GB', 'th-TH']) {
+    assert.equal(currencySymbol('THB', locale), '฿')
+    assert.equal(currencySymbol('USD', locale), '$')
+    assert.equal(currencySymbol('JPY', locale), '¥')
+    assert.equal(currencySymbol('CHF', locale), 'CHF')
+  }
 })
