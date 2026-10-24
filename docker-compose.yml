@@ -4,7 +4,12 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: tracker
-      # Postgres is reachable only from the app container and this machine's 127.0.0.1.
+      # This fixed password is safe only because Postgres is reachable just from the compose
+      # network (the app container) and this machine's 127.0.0.1, never from other machines.
+      # To change it: run
+      #   docker compose exec db psql -U tracker -c "ALTER USER tracker PASSWORD 'new-password'"
+      # then put the same password here and in DATABASE_URL below, and run `docker compose up -d`.
+      # (This line alone only sets the password when the database is first created.)
       POSTGRES_PASSWORD: tracker
       POSTGRES_DB: tracker
     volumes:
@@ -18,14 +23,19 @@ services:
       retries: 10
 
   app:
-    build: .
+    # Follows major version 1: `docker compose pull` brings fixes and features, never a breaking
+    # release. Pin an exact version (for example :1.0.0) to stay on one release.
+    # To run your own checkout instead, see docker-compose.build.yml.
+    image: ghcr.io/nonpawite/pao:1
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://tracker:tracker@db:5432/tracker
-      # Set to "false" once every family member has an account, then run `docker compose up -d` again.
+      # While "true", anyone who can open this instance can create an account. If it is reachable
+      # from the internet, strangers can sign up: set "false" before you expose it.
+      # Set to "false" once every household member has an account, then run `docker compose up -d` again.
       ALLOW_SIGNUP: "true"
       APP_TZ: Asia/Bangkok
     volumes:
