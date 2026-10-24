@@ -29,6 +29,7 @@ import { useEffect, useRef } from 'react'
 import type { CSSProperties, KeyboardEvent, ReactNode } from 'react'
 
 import type { LimitState, StripDay } from '#/lib/budget'
+import { wordPattern } from '#/lib/i18n'
 import { cn } from '#/lib/utils'
 import { useT } from './context'
 
@@ -91,19 +92,25 @@ export function BoardLine({ left, right, className }: { left: ReactNode; right?:
  * Size comes from the font size of `className`.
  */
 export function Flap({ text, dim, className }: { text: string; dim?: boolean; className?: string }) {
+  // A currency sign takes one tile however many characters it has: $, US$, CHF.
+  const tiles = (text.match(/\p{L}+\p{Sc}?|./gsu) ?? []).map((ch) => ({
+    ch,
+    k: /^\d$/.test(ch) ? 'char' : /^[,.]$/.test(ch) ? 'sep' : /^\s$/.test(ch) ? 'gap' : 'sym',
+  }))
+  // The figure's width in em (tile widths from styles.css, plus the gap), so .flaps can shrink it to fit its container.
+  // shortcut: copies styles.css's tile widths and guesses a sign's width from its letter count, so a figure can clip
+  // if either drifts; measure the rendered tiles once a sign or a styles.css change clips one.
+  const width = tiles.reduce((w, { ch, k }) => w + 0.06 + (k === 'char' ? 0.84 : k === 'sep' ? 0.36 : k === 'gap' ? 0.3 : Math.max(0.62, 0.42 * ch.length + 0.16)), 0)
   return (
     <span className={cn('inline-flex', className)}>
       <span className="sr-only">{text}</span>
-      <span aria-hidden className="flaps" data-dim={dim || undefined}>
-        {[...text].map((ch, i) => {
-          const k = /[\p{L}\d]/u.test(ch) ? 'char' : /[,.]/.test(ch) ? 'sep' : ch === ' ' ? 'gap' : 'sym'
-          return (
-            // Keyed by character so a changed character remounts and flips.
-            <span key={`${i}-${ch}`} className="flap" data-k={k} style={{ '--i': i } as CSSProperties}>
-              <span>{ch}</span>
-            </span>
-          )
-        })}
+      <span aria-hidden className="flaps" data-dim={dim || undefined} style={{ '--w': width.toFixed(2) } as CSSProperties}>
+        {tiles.map(({ ch, k }, i) => (
+          // Keyed by character so a changed character remounts and flips.
+          <span key={`${i}-${ch}`} className="flap" data-k={k} style={{ '--i': i } as CSSProperties}>
+            <span>{ch}</span>
+          </span>
+        ))}
       </span>
     </span>
   )
@@ -267,7 +274,7 @@ export const boardGrid = 'grid grid-cols-[minmax(0,1fr)] gap-3 lg:grid-flow-dens
 /** The tab's title follows the page, so a screen reader hears where a navigation landed. */
 export function useDocumentTitle(title: string) {
   useEffect(() => {
-    document.title = `${title} · Expense tracker`
+    document.title = `${title} · Pao`
   }, [title])
 }
 
@@ -297,31 +304,31 @@ export function Tile({ title, aside, className, children }: { title: ReactNode; 
   )
 }
 
-// Wayfinding pictograms by category name, English or Thai. Order matters: the first match wins.
+// Wayfinding pictograms by category name, in any shipped language (the glyph* words). Order matters: the first match wins.
 const glyphRules: Array<[RegExp, Icon]> = [
-  [/coffee|cafe|กาแฟ/i, Coffee],
-  [/food|eat|lunch|dinner|meal|อาหาร|ข้าว/i, ForkKnife],
-  [/grocer|market|ของใช้|ตลาด|ซุปเปอร์/i, Basket],
-  [/gas|fuel|petrol|น้ำมัน/i, GasPump],
-  [/travel|trip|flight|ท่องเที่ยว|เที่ยว/i, AirplaneTilt],
-  [/taxi|grab|แท็กซี่/i, Taxi],
-  [/transport|bts|mrt|train|เดินทาง|รถไฟ/i, Train],
-  [/bus|รถเมล์/i, Bus],
-  [/car|รถ/i, Car],
-  [/shop|ช้อป|ซื้อ/i, ShoppingBag],
-  [/cloth|เสื้อ/i, TShirt],
-  [/bill|ค่าบิล|บิล/i, Receipt],
-  [/water|ค่าน้ำ/i, Drop],
-  [/electric|utilit|ไฟ|สาธารณูปโภค/i, Lightning],
-  [/rent|home|house|บ้าน|ค่าเช่า/i, House],
-  [/phone|internet|mobile|โทรศัพท์|เน็ต/i, DeviceMobile],
-  [/health|doctor|medic|สุขภาพ|ยา|หมอ/i, Heartbeat],
-  [/gym|sport|fitness|กีฬา|ฟิต/i, Barbell],
-  [/fun|movie|entertain|game|บันเทิง|หนัง/i, FilmSlate],
-  [/gift|ของขวัญ|ทำบุญ/i, Gift],
-  [/school|edu|study|การศึกษา|เรียน/i, GraduationCap],
-  [/kid|child|baby|ลูก|เด็ก/i, Baby],
-  [/pet|dog|cat|สัตว์|หมา|แมว/i, PawPrint],
+  [wordPattern('glyphCoffee'), Coffee],
+  [wordPattern('glyphFood'), ForkKnife],
+  [wordPattern('glyphGroceries'), Basket],
+  [wordPattern('glyphGas'), GasPump],
+  [wordPattern('glyphTravel'), AirplaneTilt],
+  [wordPattern('glyphTaxi'), Taxi],
+  [wordPattern('glyphTransport'), Train],
+  [wordPattern('glyphBus'), Bus],
+  [wordPattern('glyphCar'), Car],
+  [wordPattern('glyphShopping'), ShoppingBag],
+  [wordPattern('glyphClothes'), TShirt],
+  [wordPattern('glyphBill'), Receipt],
+  [wordPattern('glyphWater'), Drop],
+  [wordPattern('glyphElectric'), Lightning],
+  [wordPattern('glyphHome'), House],
+  [wordPattern('glyphPhone'), DeviceMobile],
+  [wordPattern('glyphHealth'), Heartbeat],
+  [wordPattern('glyphGym'), Barbell],
+  [wordPattern('glyphFun'), FilmSlate],
+  [wordPattern('glyphGift'), Gift],
+  [wordPattern('glyphSchool'), GraduationCap],
+  [wordPattern('glyphKids'), Baby],
+  [wordPattern('glyphPets'), PawPrint],
 ]
 
 /** The pictogram for a category, or null when none fits (callers show its initial instead). */

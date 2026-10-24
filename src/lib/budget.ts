@@ -1,4 +1,5 @@
-// Pure date and limit math. Dates are local calendar days as 'YYYY-MM-DD'; money is integer satang.
+// Pure date and limit math, except householdDay, which reads APP_TZ and the clock. Dates are local calendar days as
+// 'YYYY-MM-DD'; money is integer hundredths.
 
 export type ISODate = string
 
@@ -36,6 +37,10 @@ export function addDays(date: ISODate, n: number): ISODate {
 export const diffDays = (from: ISODate, to: ISODate) => Math.round((toUTC(to) - toUTC(from)) / 86_400_000)
 
 export const weekday = (date: ISODate) => new Date(toUTC(date)).getUTCDay()
+
+/** The calendar day a moment falls on in the household's time zone: APP_TZ, else UTC. */
+export const householdDay = (at: Date = new Date()): ISODate =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: process.env.APP_TZ || 'UTC' }).format(at)
 
 /** The cycle start in a given month: startDay clamped to that month's length. */
 function startIn(y: number, m: number, startDay: number): ISODate {
@@ -88,23 +93,4 @@ const rank: Record<LimitState, number> = { over: 0, ahead: 1, ok: 2, none: 3 }
 export function sortByState<T extends { state: LimitState; spent: number; limit: number }>(rows: T[]): T[] {
   const used = (r: T) => (r.limit > 0 ? r.spent / r.limit : 0)
   return [...rows].sort((a, b) => rank[a.state] - rank[b.state] || used(b) - used(a) || b.spent - a.spent)
-}
-
-/** Parse a typed amount, allowing simple sums like "120+45+30". Returns satang, or null if invalid. */
-export function parseAmount(input: string): number | null {
-  const clean = input.replace(/[,\s฿]/g, '')
-  if (!/^\d+(\.\d{1,2})?(\+\d+(\.\d{1,2})?)*$/.test(clean)) return null
-  const satang = clean.split('+').reduce((sum, p) => sum + Math.round(Number(p) * 100), 0)
-  return satang > 0 ? satang : null
-}
-
-export function formatBaht(satang: number, opts: { sign?: boolean } = {}) {
-  const abs = Math.abs(satang)
-  const whole = abs % 100 === 0
-  const n = (abs / 100).toLocaleString('en-US', {
-    minimumFractionDigits: whole ? 0 : 2,
-    maximumFractionDigits: 2,
-  })
-  const sign = satang < 0 ? '−' : opts.sign ? '+' : ''
-  return `${sign}฿${n}`
 }

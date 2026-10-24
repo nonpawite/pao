@@ -3,11 +3,10 @@ import { ArrowDownRight, ArrowUpRight, CaretRight, CaretUp } from '@phosphor-ico
 import { z } from 'zod'
 
 import { CycleBars, RunningTotal, WeekdayBars, WhereItWent, useCategoryColor } from '#/components/app/charts'
-import { useActivePocket, useT } from '#/components/app/context'
+import { useActivePocket, useMoney, useT } from '#/components/app/context'
 import { PocketChip, PocketTabs } from '#/components/app/frame'
 import { Board, BoardLine, CategoryGlyph, Figure, PageTitle, Segmented, Tile, boardGrid, pageMain } from '#/components/app/kit'
-import { addDays, formatBaht, weekday } from '#/lib/budget'
-import { weekdayNames } from '#/lib/i18n'
+import { addDays, weekday } from '#/lib/budget'
 import { cn } from '#/lib/utils'
 import { getReview } from '#/server/review'
 import type { ReviewData } from '#/server/review'
@@ -26,6 +25,7 @@ export const Route = createFileRoute('/_app/review')({
 function Review() {
   const data = Route.useLoaderData()
   const { t, range } = useT()
+  const { money } = useMoney()
   const facts = useFacts(data)
   const partial = data.range === 'cycle'
 
@@ -50,8 +50,8 @@ function Review() {
         {facts && (
           // One panel split three ways, not three cards under the big figure.
           <div className="board grid grid-cols-3 divide-x divide-board-line rounded-lg lg:col-span-6">
-            <Fact label={t('avgADay')} value={formatBaht(facts.avgPerDay)} />
-            {facts.biggest && <Fact label={t('biggestDay')} value={formatBaht(facts.biggest.amount)} sub={facts.biggest.date} />}
+            <Fact label={t('avgADay')} value={money(facts.avgPerDay)} />
+            {facts.biggest && <Fact label={t('biggestDay')} value={money(facts.biggest.amount)} sub={facts.biggest.date} />}
             {facts.most && <Fact label={t('mostLogged')} value={facts.most.name} sub={t('timesLogged', { n: facts.most.count })} text />}
           </div>
         )}
@@ -91,11 +91,12 @@ function SpentBoard({ data, className }: { data: ReviewData; className?: string 
   const navigate = useNavigate({ from: '/review' })
   const pocket = useActivePocket()
   const { t } = useT()
+  const { money } = useMoney()
   const partial = data.range === 'cycle'
   let delta: string | null = null
   if (data.compare !== null) {
     const diff = data.spent - data.compare
-    const amount = formatBaht(Math.abs(diff))
+    const amount = money(Math.abs(diff))
     delta = partial
       ? t(diff <= 0 ? 'lessThanLast' : 'moreThanLast', { amount, n: data.cycle.dayIndex })
       : t(diff <= 0 ? 'lessThanPrev' : 'moreThanPrev', { amount })
@@ -125,7 +126,7 @@ function SpentBoard({ data, className }: { data: ReviewData; className?: string 
           }
         />
         <div className="mt-4 flex flex-wrap items-end gap-x-3 gap-y-2">
-          <Figure text={formatBaht(data.spent)} className="text-[32px] lg:text-[40px]" />
+          <Figure text={money(data.spent)} className="text-[32px] lg:text-[40px]" />
           <span className="pb-1 text-[15px] text-ink-2">{t('spent')}</span>
         </div>
         {delta && (
@@ -149,12 +150,12 @@ function SpentBoard({ data, className }: { data: ReviewData; className?: string 
             </div>
             <BoardLine
               className="mt-2.5"
-              left={t('ofEarnedAmount', { amount: formatBaht(data.earned) })}
+              left={t('ofEarnedAmount', { amount: money(data.earned) })}
               right={
                 <span className={cn(left < 0 ? 'text-over-text' : 'text-on-board')}>
                   {left < 0
-                    ? t('amountOver', { amount: formatBaht(-left) })
-                    : t(partial ? 'notSpentYetAmount' : 'keptAmount', { amount: formatBaht(left) })}
+                    ? t('amountOver', { amount: money(-left) })
+                    : t(partial ? 'notSpentYetAmount' : 'keptAmount', { amount: money(left) })}
                 </span>
               }
             />
@@ -168,6 +169,7 @@ function SpentBoard({ data, className }: { data: ReviewData; className?: string 
 /** Each category on one scale, with its 3-cycle average as a hollow square; a row opens the category. */
 function ByCategory({ data, className }: { data: ReviewData; className?: string }) {
   const { t } = useT()
+  const { money } = useMoney()
   const color = useCategoryColor()
   const partial = data.range === 'cycle'
   // One scale for every row, so bar lengths compare across categories.
@@ -196,10 +198,10 @@ function ByCategory({ data, className }: { data: ReviewData; className?: string 
                   {above && (
                     <span className="caps mr-2 flex items-center gap-1 text-[11px]">
                       <CaretUp aria-hidden weight="fill" className="size-3" />
-                      {t('vsAvg', { amount: formatBaht(c.value - avg!) })}
+                      {t('vsAvg', { amount: money(c.value - avg!) })}
                     </span>
                   )}
-                  <span className="font-board text-[17px] font-semibold">{formatBaht(c.value)}</span>
+                  <span className="font-board text-[17px] font-semibold">{money(c.value)}</span>
                   <CaretRight aria-hidden className="size-4 text-on-board-2" weight="bold" />
                 </span>
               </span>
@@ -233,7 +235,7 @@ function Fact({ label, value, sub, text }: { label: string; value: string; sub?:
 
 /** Figures read off the entries: average per day, the biggest day, what gets logged most, spend by weekday. */
 function useFacts(data: ReviewData) {
-  const { day, locale } = useT()
+  const { day, names: calendar } = useT()
   if (!data.entries.length) return null
   const today = addDays(data.cycle.start, data.cycle.dayIndex - 1)
   const last = data.to < today ? data.to : today
@@ -252,7 +254,7 @@ function useFacts(data: ReviewData) {
   // How many of each weekday the range has had so far, so each bar is an average, not a total.
   const weekdayDays = Array(7).fill(0) as number[]
   for (let d = 0; d < days; d++) weekdayDays[(weekday(addDays(data.from, d)) + 6) % 7]++
-  // shortcut: entries are capped at 400 server-side, so a long year range averages a sample; fine for a family budget.
+  // shortcut: entries are capped at 400 server-side, so a long year range averages a sample; fine for a household budget.
   const weekdayAvg = weekdayTotal.map((v, i) => (weekdayDays[i] ? Math.round(v / weekdayDays[i] / 100) * 100 : 0))
   const [bigDate, bigAmount] = [...byDate].sort((a, b) => b[1] - a[1])[0]
   const [mostName, mostCount] = [...counts].sort((a, b) => b[1] - a[1])[0] ?? []
@@ -263,6 +265,6 @@ function useFacts(data: ReviewData) {
     most: mostName ? { name: mostName, count: mostCount } : null,
     weekday: weekdayAvg,
     topDay: weekdayAvg.indexOf(Math.max(...weekdayAvg)),
-    names: weekdayNames(locale),
+    names: calendar.weekdays,
   }
 }

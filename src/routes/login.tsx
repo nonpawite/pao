@@ -7,19 +7,21 @@ import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { authClient } from '#/lib/auth-client'
-import { formatDay } from '#/lib/i18n'
+import { localeCodes, locales, pickLocale } from '#/lib/i18n'
 import type { Locale } from '#/lib/i18n'
-import { getSessionUser } from '#/server/shell'
+import { getSessionUser, getWelcome } from '#/server/shell'
 
 export const Route = createFileRoute('/login')({
   beforeLoad: async () => {
     if (await getSessionUser()) throw redirect({ to: '/' })
   },
+  loader: () => getWelcome(),
   component: Login,
 })
 
 function Login() {
   const router = useRouter()
+  const welcome = Route.useLoaderData()
   const [locale, setLocale] = useState<Locale>('en')
   const [mode, setMode] = useState<'in' | 'up'>('in')
   const [error, setError] = useState('')
@@ -27,12 +29,12 @@ function Login() {
   // Until the page is live, Sign in would post the form natively and reload; wait for hydration instead.
   const [live, setLive] = useState(false)
   useEffect(() => setLive(true), [])
-  const { t } = makeT(locale)
+  const { t, day } = makeT(locale, welcome.names[locale])
   useDocumentTitle(mode === 'in' ? t('signIn') : t('signUp'))
   // Start in the browser's language; the server render stays English, so this waits for the client.
-  useEffect(() => {
-    if (navigator.language.toLowerCase().startsWith('th')) setLocale('th')
-  }, [])
+  useEffect(() => setLocale(pickLocale(navigator.languages)), [])
+  // shortcut: the switch steps through the registry; past three or so languages, make it a menu.
+  const other = localeCodes[(localeCodes.indexOf(locale) + 1) % localeCodes.length]
   useEffect(() => {
     document.documentElement.lang = locale
   }, [locale])
@@ -53,20 +55,22 @@ function Login() {
 
   return (
     <main className="mx-auto grid min-h-dvh w-full max-w-sm content-center gap-8 px-5 py-10">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        {/* The name is the same Latin word in every language. */}
+        <p className="text-[17px] font-semibold">Pao</p>
         <button
           type="button"
-          onClick={() => setLocale(locale === 'en' ? 'th' : 'en')}
+          onClick={() => setLocale(other)}
           className="caps -my-3 -mr-2 h-11 px-2 text-[13px] underline decoration-2 underline-offset-4"
         >
-          <span lang={locale === 'en' ? 'th' : 'en'}>{locale === 'en' ? 'ภาษาไทย' : 'English'}</span>
+          <span lang={other}>{locales[other].name}</span>
         </button>
       </div>
 
       {/* The board, the app's own object, as the welcome: today's date, no figures before there is an account. */}
       <div aria-hidden className="board grid gap-3 rounded-lg p-4">
         <span className="caps text-[12px] text-on-board-2">{t('today')}</span>
-        <Figure text={formatDay(locale, new Date().toLocaleDateString('en-CA'))} className="text-[32px]" />
+        <Figure text={day(welcome.today)} className="text-[32px]" />
       </div>
 
       <h1 className="title-large">{mode === 'in' ? t('signIn') : t('signUp')}</h1>

@@ -5,7 +5,7 @@ import { db } from '#/db/index'
 import { bill, category, entry, pocket, pocketMember, user } from '#/db/schema'
 import { auth } from '#/lib/auth'
 import { billStates, byUrgency } from '#/lib/bills'
-import { addDays } from '#/lib/budget'
+import { addDays, householdDay } from '#/lib/budget'
 import type { Cycle } from '#/lib/budget'
 
 export async function requireUser() {
@@ -48,8 +48,7 @@ export async function activePocket(userId: string) {
 }
 
 /** Today in the household's time zone. */
-export const todayISO = () =>
-  new Intl.DateTimeFormat('en-CA', { timeZone: process.env.APP_TZ || 'Asia/Bangkok' }).format(new Date())
+export const todayISO = () => householdDay()
 
 export const pocketCategories = (pocketId: string) =>
   db
@@ -110,8 +109,7 @@ export async function pocketBills(pocketId: string, cycle: Pick<Cycle, 'start' |
         ),
       ),
     )
-  const since = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: process.env.APP_TZ || 'Asia/Bangkok' }).format(d)
-  return billStates(bills.map((b) => ({ ...b, since: since(b.createdAt) })), paying, cycle, today)
+  return billStates(bills.map((b) => ({ ...b, since: householdDay(b.createdAt) })), paying, cycle, today)
     .map(({ createdBy, createdAt: _, ...b }) => ({ ...b, bankAccountId: createdBy === userId ? b.bankAccountId : null }))
     .sort(byUrgency)
 }

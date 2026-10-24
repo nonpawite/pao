@@ -1,5 +1,5 @@
 ---
-name: Expense Tracker
+name: Pao
 description: A quiet ledger for daily and cycle spending, where the app recedes so the figures read.
 colors:
   ground: "#fafaf9"
@@ -204,7 +204,7 @@ components:
     typography: "{typography.hero-figure}"
 ---
 
-# Design System: Expense Tracker
+# Design System: Pao
 
 ## Overview
 
@@ -357,6 +357,8 @@ A plate track (2px inset) with a white thumb in ink at 13px medium, lifted by th
 ### Split-Flap Figure (signature)
 One plate tile per character, 0.84em × 1.2em, 3px corners, with a 1px panel-colour line across the middle. The currency sign and separators sit in narrower tiles; the currency sign is ink-2 and smaller. Tiles flip in from -86° on the X axis over 280ms (`cubic-bezier(0.2, 0.7, 0.3, 1)`), staggered 34ms left to right, and a tile remounts and flips only when its character changes. An empty typed amount shows dimmed tiles. Reduced motion removes the flip, and with it the dialog zoom, overlay fade and recap slide.
 
+**Currency symbols.** The hero shows the amount exactly as the money module formats it for the pocket's currency and the member's language, so the sign is whatever the platform gives: ฿, $, ¥, €, US$, CHF. The whole sign sits in one tile, however many characters it has. That tile is as narrow as $ (0.62em) and widens with each letter; its glyph is ink-2 at 0.56em, so a three-letter code never outweighs the digits. A space between a code and the digits (CHF 1,234) is an untiled gap. Currencies without minor units, like JPY, get no decimal tiles. When a wide sign or a long figure would overflow the hero board, the whole figure scales down to the board's width (the board is a CSS container); it never wraps, truncates or drops the sign. The typed amount takes the pocket's symbol from the money module and puts it first.
+
 ### Keypad and Entry Tape
 The add sheet on phone is a 3-column keypad of plate keys (48px tall, Geist 600 at 24px, 6px gap). Batch entry collects lines on a tape: hairline-ruled rows, each led by an 8px square in its category colour, the open row filled plate.
 
@@ -389,6 +391,7 @@ Phosphor icons. Navigation, pictograms and status icons use the regular weight a
 - **Don't** use uppercase or tracked labels; labels stay sentence case with zero tracking.
 - **Don't** put category pictograms on filled icon tiles; they are bare outline glyphs.
 - **Don't** put flap tiles on any figure other than Today's hero and the amount being typed.
+- **Don't** hardcode a currency sign or split one across tiles; take the sign from the money module and give it one tile.
 - **Don't** cast shadows on resting panels, rows or buttons.
 - **Don't** colour a bar amber or red unless its limit needs attention, and don't use blue for a one-series chart.
 - **Don't** use Geist Mono or any monospaced face for money.

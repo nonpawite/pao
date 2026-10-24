@@ -4,10 +4,9 @@ import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 
 import { useCategoryColor } from '#/components/app/charts'
-import { useActivePocket, useT } from '#/components/app/context'
+import { useActivePocket, useMoney, useT } from '#/components/app/context'
 import { DayStrip, useDocumentTitle } from '#/components/app/kit'
 import { Button } from '#/components/ui/button'
-import { formatBaht } from '#/lib/budget'
 import { cn } from '#/lib/utils'
 import { getRecap } from '#/server/review'
 
@@ -21,6 +20,7 @@ function Recap() {
   const data = Route.useLoaderData()
   const pocket = useActivePocket()
   const { t, range } = useT()
+  const { money } = useMoney()
   const color = useCategoryColor()
   const [i, setI] = useState(0)
   useDocumentTitle(t('recap'))
@@ -52,10 +52,10 @@ function Recap() {
       body:
         data.kind === 'personal' ? (
           <>
-            <Figure amount={formatBaht(Math.abs(kept))} suffix={kept >= 0 ? t('keptSuffix') : t('overEarned')} />
+            <Figure amount={money(Math.abs(kept))} suffix={kept >= 0 ? t('keptSuffix') : t('overEarned')} />
             {data.keptDelta !== null && (
               <p className={cn('caps text-[14px]', data.keptDelta >= 0 ? 'text-ok-text' : 'text-ahead-text')}>
-                {t(data.keptDelta >= 0 ? 'keptMore' : 'keptLess', { amount: formatBaht(Math.abs(data.keptDelta)) })}
+                {t(data.keptDelta >= 0 ? 'keptMore' : 'keptLess', { amount: money(Math.abs(data.keptDelta)) })}
               </p>
             )}
             {/* Earned as one bar, as on Review: the spent part in ink, the rest is what was kept. */}
@@ -64,12 +64,12 @@ function Recap() {
                 <span className={cn('h-full', kept < 0 ? 'bg-over' : 'bg-ink')} style={{ width: `${Math.min(100, (data.spent / Math.max(1, data.earned)) * 100)}%` }} />
               </div>
               <p className="caps text-[12px] text-on-board-2">
-                {t('spentOfEarned', { spent: formatBaht(data.spent), earned: formatBaht(data.earned) })}
+                {t('spentOfEarned', { spent: money(data.spent), earned: money(data.earned) })}
               </p>
             </div>
           </>
         ) : (
-          <Figure amount={formatBaht(data.spent)} suffix={t('spent').toLowerCase()} />
+          <Figure amount={money(data.spent)} suffix={t('spent').toLowerCase()} />
         ),
     },
     ...(data.top.length
@@ -84,7 +84,7 @@ function Recap() {
                     <li key={c.id} className="grid gap-1.5">
                       <span className="flex items-baseline justify-between text-[17px] font-semibold">
                         <span>{c.name}</span>
-                        <span className="font-board">{formatBaht(c.spent)}</span>
+                        <span className="font-board">{money(c.spent)}</span>
                       </span>
                       <span className="h-1 bg-board-line">
                         <span className="block h-full" style={{ width: `${(c.spent / data.top[0].spent) * 100}%`, background: color(c.name) }} />
@@ -120,7 +120,7 @@ function Recap() {
             {data.limits.map((l) => (
               <li key={l.id} className="flex justify-between border-b border-board-line pb-2">
                 <span>{l.name}</span>
-                <span className="font-board font-semibold">{t(l.limitType === 'day' ? 'aDay' : 'aCycle', { amount: formatBaht(l.limit) })}</span>
+                <span className="font-board font-semibold">{t(l.limitType === 'day' ? 'aDay' : 'aCycle', { amount: money(l.limit) })}</span>
               </li>
             ))}
           </ul>

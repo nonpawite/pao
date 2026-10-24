@@ -5,8 +5,7 @@ import {
   cycleFor,
   cycleLimitState,
   dayStrip,
-  formatBaht,
-  parseAmount,
+  householdDay,
   previousCycle,
   sortByState,
 } from './budget.ts'
@@ -59,17 +58,19 @@ test('problems sort first', () => {
   assert.deepEqual(sortByState(rows).map((r) => r.name), ['Travel', 'Bills', 'Fun'])
 })
 
-test('amount parsing accepts sums and rejects junk', () => {
-  assert.equal(parseAmount('65'), 6_500)
-  assert.equal(parseAmount('120+45+30'), 19_500)
-  assert.equal(parseAmount('1,250.50'), 125_050)
-  assert.equal(parseAmount('0'), null)
-  assert.equal(parseAmount('12-3'), null)
-  assert.equal(parseAmount('abc'), null)
-})
-
-test('baht formatting', () => {
-  assert.equal(formatBaht(115_000), '฿1,150')
-  assert.equal(formatBaht(6_550), '฿65.50')
-  assert.equal(formatBaht(-15_000), '−฿150')
+test('household day falls back to UTC when APP_TZ is unset', () => {
+  const saved = process.env.APP_TZ
+  // 23:30 UTC on 1 Jan is already 2 Jan in Bangkok.
+  const late = new Date('2026-01-01T23:30:00Z')
+  try {
+    delete process.env.APP_TZ
+    assert.equal(householdDay(late), '2026-01-01')
+    process.env.APP_TZ = ''
+    assert.equal(householdDay(late), '2026-01-01')
+    process.env.APP_TZ = 'Asia/Bangkok'
+    assert.equal(householdDay(late), '2026-01-02')
+  } finally {
+    if (saved === undefined) delete process.env.APP_TZ
+    else process.env.APP_TZ = saved
+  }
 })

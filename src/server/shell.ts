@@ -8,6 +8,8 @@ import { bankAccount, entry, pocket, pocketMember, user } from '#/db/schema'
 import { auth } from '#/lib/auth'
 import { addDays, cycleFor } from '#/lib/budget'
 import { isOwed } from '#/lib/bills'
+import { calendarNames, localeCodes, pickLocale } from '#/lib/i18n'
+import type { CalendarNames, Locale } from '#/lib/i18n'
 import { activePocket, pocketBills, pocketCategories, pocketEntries, requirePocket, requireUser, todayISO } from './session'
 import { getRequestHeaders } from '@tanstack/react-start/server'
 
@@ -15,6 +17,12 @@ export const getSessionUser = createServerFn({ method: 'GET' }).handler(async ()
   const session = await auth.api.getSession({ headers: getRequestHeaders() })
   return session ? { id: session.user.id, name: session.user.name } : null
 })
+
+/** Sign-in's welcome board: the household's today, and calendar names for every language its switch can show. */
+export const getWelcome = createServerFn({ method: 'GET' }).handler(() => ({
+  today: todayISO(),
+  names: Object.fromEntries(localeCodes.map((l) => [l, calendarNames(l)])) as Record<Locale, CalendarNames>,
+}))
 
 /** Everything the app frame needs: pockets for the switcher, and what the add form needs for every pocket. */
 export const getShell = createServerFn({ method: 'GET' }).handler(async () => {
@@ -79,6 +87,7 @@ export const getShell = createServerFn({ method: 'GET' }).handler(async () => {
         name: p.name,
         color: p.color,
         kind: p.kind,
+        currency: p.currency,
         role,
         cycle,
         cycleStartDay: p.cycleStartDay,
@@ -103,15 +112,17 @@ export const getShell = createServerFn({ method: 'GET' }).handler(async () => {
     }),
   )
 
+  const locale = pickLocale([(u as { locale?: string }).locale ?? ''])
   return {
     today,
     user: {
       id: u.id,
       name: u.name,
       email: u.email,
-      locale: (u as { locale?: string }).locale === 'th' ? 'th' : 'en',
+      locale,
       weekStart: (u as { weekStart?: number }).weekStart === 1 ? 1 : 0,
     } as const,
+    names: calendarNames(locale),
     activePocketId: active.id,
     pockets,
     accounts,
@@ -129,7 +140,7 @@ export const setActivePocket = createServerFn({ method: 'POST' })
   })
 
 export const setLocale = createServerFn({ method: 'POST' })
-  .validator(z.object({ locale: z.enum(['en', 'th']) }))
+  .validator(z.object({ locale: z.enum(localeCodes) }))
   .handler(async ({ data }) => {
     const u = await requireUser()
     await db.update(user).set({ locale: data.locale }).where(eq(user.id, u.id))

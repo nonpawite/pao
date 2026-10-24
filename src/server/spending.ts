@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { db } from '#/db/index'
 import { bankAccount, category, entry, pocket, pocketMember, user } from '#/db/schema'
 import { cycleFor, previousCycle } from '#/lib/budget'
+import { totalsByCurrency } from '#/lib/money'
 import { activePocket, requireUser, todayISO } from './session'
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -35,7 +36,7 @@ export const getSpending = createServerFn({ method: 'GET' })
 
     // Only pockets the user belongs to; every filter below narrows inside these.
     const pockets = await db
-      .select({ id: pocket.id, name: pocket.name, color: pocket.color, kind: pocket.kind })
+      .select({ id: pocket.id, name: pocket.name, color: pocket.color, kind: pocket.kind, currency: pocket.currency })
       .from(pocketMember)
       .innerJoin(pocket, eq(pocket.id, pocketMember.pocketId))
       .where(eq(pocketMember.userId, u.id))
@@ -70,7 +71,7 @@ export const getSpending = createServerFn({ method: 'GET' })
     const filter = and(...where)
 
     const spentSum = sql<number>`sum(${entry.amount})`.mapWith(Number)
-    const [rows, [totals], byCategory, categories, members, accounts] = await Promise.all([
+    const [rows, perPocket, byCategory, categories, members, accounts] = await Promise.all([
       db
         .select({
           id: entry.id,
@@ -91,22 +92,28 @@ export const getSpending = createServerFn({ method: 'GET' })
         .where(filter)
         .orderBy(desc(entry.occurredOn), desc(entry.createdAt))
         .limit(f.limit + 1),
+      // Per pocket, in pocket order; folded into one figure per currency below.
       db
         .select({
+          currency: pocket.currency,
           count: sql<number>`count(*)`.mapWith(Number),
           spent: sql<number>`coalesce(sum(${entry.amount}) filter (where ${entry.kind} = 'expense'), 0)`.mapWith(Number),
           earned: sql<number>`coalesce(sum(${entry.amount}) filter (where ${entry.kind} = 'income'), 0)`.mapWith(Number),
         })
         .from(entry)
+        .innerJoin(pocket, eq(pocket.id, entry.pocketId))
         .leftJoin(category, eq(category.id, entry.categoryId))
-        .where(filter),
-      // By name, so Food in two pockets reads as one Food across all pockets.
+        .where(filter)
+        .groupBy(pocket.id)
+        .orderBy(asc(pocket.createdAt)),
+      // By currency, then name: Food in two THB pockets reads as one Food, a JPY Food stays apart.
       db
-        .select({ name: category.name, value: spentSum })
+        .select({ currency: pocket.currency, name: category.name, value: spentSum })
         .from(entry)
+        .innerJoin(pocket, eq(pocket.id, entry.pocketId))
         .leftJoin(category, eq(category.id, entry.categoryId))
         .where(and(filter, eq(entry.kind, 'expense')))
-        .groupBy(category.name)
+        .groupBy(pocket.currency, category.name)
         .orderBy(desc(spentSum)),
       db
         .select({ id: category.id, name: category.name, pocketId: category.pocketId })
@@ -127,6 +134,9 @@ export const getSpending = createServerFn({ method: 'GET' })
     ])
 
     const byId = new Map(pockets.map((p) => [p.id, p]))
+    // One figure per currency, never a sum across them (ADR 0001). Currencies with nothing to show drop out.
+    const fold = (key: 'spent' | 'earned') => totalsByCurrency(perPocket.filter((p) => p[key]).map((p) => ({ currency: p.currency, total: p[key] })))
+    const spent = fold('spent')
     return {
       today,
       from,
@@ -135,11 +145,21 @@ export const getSpending = createServerFn({ method: 'GET' })
       categories: categories.map((c) => ({ ...c, pocketName: byId.get(c.pocketId)!.name })),
       members,
       accounts,
-      totals,
-      byCategory: byCategory.map((c) => ({ id: c.name ?? '', name: c.name ?? '', value: c.value })),
+      totals: {
+        count: perPocket.reduce((n, p) => n + p.count, 0),
+        // Nothing spent still reads as zero, in the active pocket's currency.
+        spent: spent.length ? spent : [{ currency: active.currency, total: 0 }],
+        earned: fold('earned'),
+      },
+      // One breakdown per currency, in the same order as the totals.
+      byCategory: spent.map(({ currency }) => ({
+        currency,
+        categories: byCategory.filter((c) => c.currency === currency).map((c) => ({ id: c.name ?? '', name: c.name ?? '', value: c.value })),
+      })),
       hasMore: rows.length > f.limit,
       entries: rows.slice(0, f.limit).map(({ accountName, ...r }) => ({
         ...r,
+        currency: byId.get(r.pocketId)!.currency,
         // Someone else's account names stay theirs, even inside a shared pocket.
         accountName: r.userId === u.id ? accountName : null,
       })),

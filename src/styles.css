@@ -335,6 +335,9 @@
 .flaps {
   display: inline-flex;
   gap: 0.06em;
+  /* Shrinks to fit the nearest container (Today's hero board) when a wide sign or a long figure would overflow it.
+     --w is the figure's width in em, set by Flap. With no container, 100cqi is the viewport width. */
+  font-size: min(1em, 100cqi / var(--w, 1));
   perspective: 600px;
   font-family: var(--font-board);
   font-weight: 500;
@@ -361,12 +364,16 @@
   height: 1px;
   background: var(--board);
 }
+/* A sign's tile is as narrow as $ and grows with its letters (CHF, US$). */
 .flap[data-k='sym'] {
-  width: 0.62em;
+  width: auto;
+  min-width: 0.62em;
+  padding-inline: 0.08em;
   color: var(--on-board-2);
 }
 .flap[data-k='sym'] > span {
   font-size: 0.56em;
+  white-space: nowrap;
 }
 .flap[data-k='sep'] {
   width: 0.36em;

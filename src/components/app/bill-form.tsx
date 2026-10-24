@@ -1,4 +1,5 @@
 import { useRouter } from '@tanstack/react-router'
+import { Receipt } from '@phosphor-icons/react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 
@@ -7,11 +8,11 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/compone
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { nextDue } from '#/lib/bills'
-import { parseAmount } from '#/lib/budget'
-import { monthNames, ordinal } from '#/lib/i18n'
+import { ordinal } from '#/lib/i18n'
+import { parseAmount } from '#/lib/money'
 import { cn } from '#/lib/utils'
 import { deleteBill, saveBill } from '#/server/bills'
-import { useActivePocket, useShell, useT } from './context'
+import { useActivePocket, useMoney, useShell, useT } from './context'
 import { Segmented, glyphFor } from './kit'
 import { Picker } from './picker'
 
@@ -52,7 +53,7 @@ export const draftFrom = (b: SavedBill): BillDraft => ({
 
 /**
  * A blank bill on a given date and the first account. Its category is the pocket's bills category when it has one
- * (named like "Bills" or "ค่าบิล"); otherwise none, so the bill is never filed under Gas without a choice.
+ * (the receipt pictogram, named like "Bills" or "ค่าบิล"); otherwise none, so the bill is never filed under Gas without a choice.
  */
 export function useNewDraft() {
   const shell = useShell()
@@ -62,7 +63,7 @@ export function useNewDraft() {
     name: '',
     amount: '',
     varies: false,
-    categoryId: pocket.categories.find((c) => glyphFor(c.name) === glyphFor('bill'))?.id ?? null,
+    categoryId: pocket.categories.find((c) => glyphFor(c.name) === Receipt)?.id ?? null,
     bankAccountId: shell.accounts[0]?.id ?? null,
     repeat: 'monthly',
     day: Number(date.slice(8)),
@@ -87,8 +88,9 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
   const shell = useShell()
   const pocket = useActivePocket()
   const router = useRouter()
-  const { t, day, locale } = useT()
+  const { t, day, names } = useT()
   const { dayOptions, dayName } = useDays()
+  const { symbol } = useMoney()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [confirming, setConfirming] = useState(false)
@@ -125,7 +127,7 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
             className="grid gap-4"
             onSubmit={(e) => {
               e.preventDefault()
-              const amount = draft.varies ? null : parseAmount(draft.amount)
+              const amount = draft.varies ? null : parseAmount(draft.amount, pocket.currency)
               // Problems show inside the form, next to Save, rather than in a toast that leaves.
               if (!draft.varies && amount === null) return setError(t('badAmount'))
               if (!draft.categoryId) return setError(t('pickCategory'))
@@ -156,7 +158,7 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
                 <Input
                   id="bill-amount"
                   inputMode="decimal"
-                  placeholder="฿"
+                  placeholder={symbol}
                   required={!draft.varies}
                   disabled={draft.varies}
                   value={draft.varies ? '' : draft.amount}
@@ -226,7 +228,7 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
                   <Picker
                     label={t('month')}
                     value={draft.month}
-                    options={monthNames(locale).map((m, i) => ({ value: i + 1, label: m }))}
+                    options={names.months.map((m, i) => ({ value: i + 1, label: m }))}
                     columns={4}
                     onChange={(m) => setDraft({ ...draft, month: m })}
                     className={pickerClass}

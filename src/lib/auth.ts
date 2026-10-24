@@ -5,12 +5,13 @@ import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import { db } from '../db/index.ts'
 import * as schema from '../db/schema.ts'
 import { createPersonalSpace } from '../server/setup.ts'
+import { pickLocale } from './i18n.ts'
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: 'pg', schema }),
   emailAndPassword: {
     enabled: true,
-    // Family instance: turn sign-up off once everyone has an account.
+    // Household instance: turn sign-up off once everyone has an account.
     disableSignUp: process.env.ALLOW_SIGNUP === 'false',
   },
   user: {
@@ -23,10 +24,14 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (user) => {
-          await createPersonalSpace(user.id, user.locale === 'th' ? 'th' : 'en')
+          await createPersonalSpace(user.id, pickLocale([(user as { locale?: string }).locale ?? '']))
         },
       },
     },
+  },
+  advanced: {
+    // Browsers drop Secure cookies over plain http (http://<LAN IP>:3000), so only an HTTPS address gets them.
+    useSecureCookies: process.env.BETTER_AUTH_URL?.startsWith('https://') ?? false,
   },
   plugins: [tanstackStartCookies()],
 })

@@ -7,14 +7,14 @@ export const Route = createRootRoute({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
-      { title: 'Expense tracker' },
+      { title: 'Pao' },
       { name: 'theme-color', content: '#fafaf9', media: '(prefers-color-scheme: light)' },
       { name: 'theme-color', content: '#0d0d0e', media: '(prefers-color-scheme: dark)' },
       // Opens full screen when added to the home screen.
       { name: 'apple-mobile-web-app-capable', content: 'yes' },
       { name: 'mobile-web-app-capable', content: 'yes' },
       { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
-      { name: 'apple-mobile-web-app-title', content: 'Expenses' },
+      { name: 'apple-mobile-web-app-title', content: 'Pao' },
     ],
     links: [
       { rel: 'stylesheet', href: appCss },
