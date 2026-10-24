@@ -1,5 +1,5 @@
 ---
-name: Expense Tracker
+name: Pao
 description: A quiet ledger for daily and cycle spending, where the app recedes so the figures read.
 colors:
   ground: "#fafaf9"
@@ -204,7 +204,7 @@ components:
     typography: "{typography.hero-figure}"
 ---
 
-# Design System: Expense Tracker
+# Design System: Pao
 
 ## Overview
 

@@ -43,7 +43,7 @@ A limit tracker, not a bank and not a ledger. No bank sync, no balance reconcili
 - Income and expenses are tagged with an account (main, saving, investment, member-defined). No running balances. A cycle shows earned, spent, and kept.
 - Currency is set per pocket, as an ISO 4217 code (ADR 0001). Every amount shows the pocket's currency symbol and decimal rules, for example no decimals for JPY. A new member's personal pocket starts in the instance's default currency; a new shared pocket starts in its creator's personal-pocket currency. Changing a pocket's currency relabels its amounts and never converts them. A view across pockets shows one total per currency and never adds two currencies together.
 - Languages: Thai and English ship. Signup starts in the browser's language when Pao has it, otherwise English, and each member can switch in Settings. Month and weekday names, dates and numbers come from the platform's locale data. A new language is one messages file plus one registry entry.
-- Manual entry only. Bank sync, CSV import and export, and receipt or slip scanning are out of scope.
+- Manual entry only. Bank sync, CSV import, and receipt or slip scanning are out of scope. CSV export is planned after v1.0.0, as a good first issue for contributors.
 - Open: transfers between accounts.
 
 ## Brand Commitments
