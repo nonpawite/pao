@@ -305,6 +305,10 @@ export const en = {
   colorPurple: 'Purple',
   colorPink: 'Pink',
   colorTeal: 'Teal',
+  // Date word order; the month and weekday names come from the platform.
+  dateDay: '{day} {month}',
+  dateWeekday: '{weekday} {day} {month}',
+  dateMonth: '{month} {year}',
   // Day of month by the platform's ordinal rule: 1st, 2nd, 3rd, 4th.
   ordinalOne: '{n}st',
   ordinalTwo: '{n}nd',

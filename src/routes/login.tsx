@@ -7,19 +7,21 @@ import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { authClient } from '#/lib/auth-client'
-import { formatDay, localeCodes, locales, pickLocale } from '#/lib/i18n'
+import { localeCodes, locales, pickLocale } from '#/lib/i18n'
 import type { Locale } from '#/lib/i18n'
-import { getSessionUser } from '#/server/shell'
+import { getSessionUser, getWelcome } from '#/server/shell'
 
 export const Route = createFileRoute('/login')({
   beforeLoad: async () => {
     if (await getSessionUser()) throw redirect({ to: '/' })
   },
+  loader: () => getWelcome(),
   component: Login,
 })
 
 function Login() {
   const router = useRouter()
+  const welcome = Route.useLoaderData()
   const [locale, setLocale] = useState<Locale>('en')
   const [mode, setMode] = useState<'in' | 'up'>('in')
   const [error, setError] = useState('')
@@ -27,7 +29,7 @@ function Login() {
   // Until the page is live, Sign in would post the form natively and reload; wait for hydration instead.
   const [live, setLive] = useState(false)
   useEffect(() => setLive(true), [])
-  const { t } = makeT(locale)
+  const { t, day } = makeT(locale, welcome.names[locale])
   useDocumentTitle(mode === 'in' ? t('signIn') : t('signUp'))
   // Start in the browser's language; the server render stays English, so this waits for the client.
   useEffect(() => setLocale(pickLocale(navigator.languages)), [])
@@ -68,7 +70,7 @@ function Login() {
       {/* The board, the app's own object, as the welcome: today's date, no figures before there is an account. */}
       <div aria-hidden className="board grid gap-3 rounded-lg p-4">
         <span className="caps text-[12px] text-on-board-2">{t('today')}</span>
-        <Figure text={formatDay(locale, new Date().toLocaleDateString('en-CA'))} className="text-[32px]" />
+        <Figure text={day(welcome.today)} className="text-[32px]" />
       </div>
 
       <h1 className="title-large">{mode === 'in' ? t('signIn') : t('signUp')}</h1>

@@ -306,6 +306,9 @@ export const th: Messages = {
   colorPurple: 'ม่วง',
   colorPink: 'ชมพู',
   colorTeal: 'เขียวอมฟ้า',
+  dateDay: '{day} {month}',
+  dateWeekday: '{weekday} {day} {month}',
+  dateMonth: '{month} {year}',
   // Thai days of month take no suffix.
   ordinalOne: '{n}',
   ordinalTwo: '{n}',

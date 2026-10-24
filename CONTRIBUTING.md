@@ -96,7 +96,7 @@ A language is one messages file plus one entry in the locale registry.
    ```
 
    - `name` is the language's name in that language. The Settings language picker shows it.
-   - `tag` is the locale tag for the platform's number, date and currency formatting. Month and weekday names come from it, so you don't translate them.
+   - `tag` is the locale tag for the platform's number, date and currency formatting. Month and weekday names come from it, so you don't translate them. The `date*` keys in your file set their word order.
 
 4. Run `bun run typecheck`. It reports every message key your file is missing or misspells.
 5. Run `bun test`. `src/lib/i18n.test.ts` uses `fr` and `de` as examples of languages Pao doesn't have. If you add one of them, change those examples to a language that is still missing.

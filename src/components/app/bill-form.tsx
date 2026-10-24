@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/compone
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { nextDue } from '#/lib/bills'
-import { monthNames, ordinal } from '#/lib/i18n'
+import { ordinal } from '#/lib/i18n'
 import { parseAmount } from '#/lib/money'
 import { cn } from '#/lib/utils'
 import { deleteBill, saveBill } from '#/server/bills'
@@ -87,7 +87,7 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
   const shell = useShell()
   const pocket = useActivePocket()
   const router = useRouter()
-  const { t, day, locale } = useT()
+  const { t, day, names } = useT()
   const { dayOptions, dayName } = useDays()
   const { symbol } = useMoney()
   const [busy, setBusy] = useState(false)
@@ -227,7 +227,7 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
                   <Picker
                     label={t('month')}
                     value={draft.month}
-                    options={monthNames(locale).map((m, i) => ({ value: i + 1, label: m }))}
+                    options={names.months.map((m, i) => ({ value: i + 1, label: m }))}
                     columns={4}
                     onChange={(m) => setDraft({ ...draft, month: m })}
                     className={pickerClass}

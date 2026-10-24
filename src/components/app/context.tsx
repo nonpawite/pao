@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react'
 
-import { formatDay, locales, translate } from '#/lib/i18n'
-import type { Locale, MessageKey } from '#/lib/i18n'
+import { formatDay, formatMonth, locales, translate } from '#/lib/i18n'
+import type { CalendarNames, Locale, MessageKey } from '#/lib/i18n'
 import { compactMoney, currencySymbol, formatMoney } from '#/lib/money'
 import type { Shell } from '#/server/shell'
 
@@ -15,17 +15,21 @@ export function useShell() {
   return shell
 }
 
-export function makeT(locale: Locale) {
+/** Messages and dates in `locale`; `names` is the server's calendar table, so the browser renders what the server did. */
+export function makeT(locale: Locale, names: CalendarNames) {
   return {
     locale,
+    names,
     t: (key: MessageKey, vars?: Record<string, string | number>) => translate(locale, key, vars),
-    day: (date: string, withWeekday = false) => formatDay(locale, date, withWeekday),
-    range: (start: string, end: string) => `${formatDay(locale, start)} – ${formatDay(locale, end)}`,
+    day: (date: string, withWeekday = false) => formatDay(locale, names, date, withWeekday),
+    range: (start: string, end: string) => `${formatDay(locale, names, start)} – ${formatDay(locale, names, end)}`,
+    month: (month: string) => formatMonth(locale, names, month),
   }
 }
 
 export function useT() {
-  return makeT(useShell().user.locale)
+  const shell = useShell()
+  return makeT(shell.user.locale, shell.names)
 }
 
 /** The user's language, or English outside the app shell (sign-in), for shared pieces like dialogs. */
