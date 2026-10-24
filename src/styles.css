@@ -364,7 +364,7 @@
   height: 1px;
   background: var(--board);
 }
-/* A sign's tile is as narrow as ฿ and grows with its letters (CHF, US$). */
+/* A sign's tile is as narrow as $ and grows with its letters (CHF, US$). */
 .flap[data-k='sym'] {
   width: auto;
   min-width: 0.62em;

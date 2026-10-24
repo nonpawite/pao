@@ -1,6 +1,4 @@
-// Pure date and limit math. Dates are local calendar days as 'YYYY-MM-DD'; money is integer satang.
-
-import { formatMoney } from './money.ts'
+// Pure date and limit math. Dates are local calendar days as 'YYYY-MM-DD'; money is integer hundredths.
 
 export type ISODate = string
 
@@ -95,7 +93,3 @@ export function sortByState<T extends { state: LimitState; spent: number; limit:
   const used = (r: T) => (r.limit > 0 ? r.spent / r.limit : 0)
   return [...rows].sort((a, b) => rank[a.state] - rank[b.state] || used(b) - used(a) || b.spent - a.spent)
 }
-
-export { parseAmount } from './money.ts'
-
-export const formatBaht = (satang: number, opts: { sign?: boolean } = {}) => formatMoney(satang, 'THB', 'en-US', opts)

@@ -41,7 +41,7 @@ const billInput = z
     pocketId: z.uuid(),
     id: z.uuid().nullable(),
     name: z.string().trim().min(1).max(40),
-    // Satang; null when it varies.
+    // Hundredths; null when it varies.
     amount: z.number().int().positive().max(2_000_000_000).nullable(),
     categoryId: z.uuid(),
     bankAccountId: z.uuid().nullable(),

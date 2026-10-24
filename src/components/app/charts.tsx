@@ -401,7 +401,7 @@ export function WeekdayBars({ values, names }: { values: number[]; names: string
 type Bar = { start: string; spent: number; current: boolean; hasData: boolean }
 
 /**
- * Spent per cycle on the board, values printed. Cycles before the first entry are dropped (no data is not ฿0).
+ * Spent per cycle on the board, values printed. Cycles before the first entry are dropped (no data is not zero).
  * The current cycle is partial: a dashed outline shows where it lands at this pace.
  */
 export function CycleBars({ bars, cycle, className }: { bars: Bar[]; cycle: { dayIndex: number; length: number }; className?: string }) {

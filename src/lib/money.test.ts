@@ -63,6 +63,7 @@ test('axis ticks write the pocket currency where its amounts put it', () => {
 test('parsing sums and thousands separators', () => {
   assert.equal(parseAmount('65'), 6_500)
   assert.equal(parseAmount('120+45'), 16_500)
+  assert.equal(parseAmount('120+45+30'), 19_500)
   assert.equal(parseAmount('120 + 45.50'), 16_550)
   assert.equal(parseAmount('1,250.50'), 125_050)
   assert.equal(parseAmount('1 250'), 125_000)
