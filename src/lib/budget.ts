@@ -1,5 +1,7 @@
 // Pure date and limit math. Dates are local calendar days as 'YYYY-MM-DD'; money is integer satang.
 
+import { formatMoney } from './money.ts'
+
 export type ISODate = string
 
 export type Cycle = {
@@ -90,21 +92,6 @@ export function sortByState<T extends { state: LimitState; spent: number; limit:
   return [...rows].sort((a, b) => rank[a.state] - rank[b.state] || used(b) - used(a) || b.spent - a.spent)
 }
 
-/** Parse a typed amount, allowing simple sums like "120+45+30". Returns satang, or null if invalid. */
-export function parseAmount(input: string): number | null {
-  const clean = input.replace(/[,\s฿]/g, '')
-  if (!/^\d+(\.\d{1,2})?(\+\d+(\.\d{1,2})?)*$/.test(clean)) return null
-  const satang = clean.split('+').reduce((sum, p) => sum + Math.round(Number(p) * 100), 0)
-  return satang > 0 ? satang : null
-}
+export { parseAmount } from './money.ts'
 
-export function formatBaht(satang: number, opts: { sign?: boolean } = {}) {
-  const abs = Math.abs(satang)
-  const whole = abs % 100 === 0
-  const n = (abs / 100).toLocaleString('en-US', {
-    minimumFractionDigits: whole ? 0 : 2,
-    maximumFractionDigits: 2,
-  })
-  const sign = satang < 0 ? '−' : opts.sign ? '+' : ''
-  return `${sign}฿${n}`
-}
+export const formatBaht = (satang: number, opts: { sign?: boolean } = {}) => formatMoney(satang, 'THB', 'en-US', opts)
