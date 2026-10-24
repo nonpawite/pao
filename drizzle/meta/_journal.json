@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792151404724,
+      "tag": "0000_uneven_raza",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792320607272,
+      "tag": "0001_bills",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792322694554,
+      "tag": "0002_week_start",
+      "breakpoints": true
+    }
+  ]
+}

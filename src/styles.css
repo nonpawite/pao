@@ -1,0 +1,427 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import '@fontsource-variable/anuphan';
+@import '@fontsource/geist/500.css';
+@import '@fontsource/geist/600.css';
+
+/* Thai glyphs only: Thai text sets in IBM Plex Sans Thai, everything else falls through to the next face.
+   Declared here rather than imported, because the package's Thai files carry no unicode-range: an English page
+   downloaded all three weights and set its spaces in Plex. */
+@font-face {
+  font-family: 'IBM Plex Sans Thai';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('../node_modules/@fontsource/ibm-plex-sans-thai/files/ibm-plex-sans-thai-thai-400-normal.woff2') format('woff2');
+  unicode-range: U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Thai';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('../node_modules/@fontsource/ibm-plex-sans-thai/files/ibm-plex-sans-thai-thai-500-normal.woff2') format('woff2');
+  unicode-range: U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Thai';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('../node_modules/@fontsource/ibm-plex-sans-thai/files/ibm-plex-sans-thai-thai-600-normal.woff2') format('woff2');
+  unicode-range: U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+
+/* Digits (and the signs around them) in Geist wherever they appear, so an amount inside a sentence or a label line
+   keeps the Tabular Money Rule even though the words around it are in the text face. */
+@font-face {
+  font-family: 'Geist Figures';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('../node_modules/@fontsource/geist/files/geist-latin-400-normal.woff2') format('woff2');
+  unicode-range: U+0025, U+002B-002E, U+0030-0039, U+2212;
+}
+@font-face {
+  font-family: 'Geist Figures';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('../node_modules/@fontsource/geist/files/geist-latin-500-normal.woff2') format('woff2');
+  unicode-range: U+0025, U+002B-002E, U+0030-0039, U+2212;
+}
+@font-face {
+  font-family: 'Geist Figures';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('../node_modules/@fontsource/geist/files/geist-latin-600-normal.woff2') format('woff2');
+  unicode-range: U+0025, U+002B-002E, U+0030-0039, U+2212;
+}
+
+/* The app follows the system appearance. */
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
+/*
+ * Quiet Ledger: white panels on a soft page, hairline rules, words in Anuphan and figures in Geist with tabular digits.
+ * Ink carries every action; colour appears only where it means something: state, chart series, and the
+ * active pocket's own colour as the one accent mark (today, the active tab, selection outlines).
+ */
+:root {
+  --ground: #fafaf9;
+  /* Wells, keys, chips and flap tiles. */
+  --plate: #f2f2f0;
+  --ink: #111213;
+  --ink-2: #6a6c70;
+  --ink-3: #a3a5a8;
+  --rule: #e8e8e5;
+  /* Field edges and the rule over a group: a step above a hairline. */
+  --rule-strong: #d9d9d5;
+
+  /* The panel (the old board roles keep their names so every surface moves together). */
+  --board: #ffffff;
+  --flap: #f2f2f0;
+  --board-line: #e8e8e5;
+  --on-board: #111213;
+  --on-board-2: #6a6c70;
+
+  /* The accent: the active pocket's colour, set on the app shell. Marks and small badges only, never text.
+     Text on it is ink in both themes: white on teal, orange or green falls under 3:1. */
+  --sign: #14b8c4;
+  --sign-ink: #111213;
+
+  /* State: fills for marks and bars; text shades pass 4.5:1 on white. */
+  --ok: #1f9a62;
+  --ahead: #c98a12;
+  --over: #d63b3b;
+  --ok-text: #17784b;
+  --ahead-text: #8f5a06;
+  --over-text: #c42b2e;
+
+  /* Chart identity: one fixed slot per category, by the pocket's category order, never by rank, so Food is
+     one colour on every chart. Validated adjacent CVD ΔE ≥ 11.2, normal-vision ≥ 17.2, all ≥ 3:1. */
+  --cat-1: #3986e4;
+  --cat-2: #ca488f;
+  --cat-3: #da7134;
+  --cat-4: #8d67d2;
+  --cat-5: #11a6a2;
+  --cat-6: #984f9c;
+  --cat-7: #2f9ecf;
+  --cat-other: #6b6d72;
+  /* One-series charts are ink, so blue stays Food's on the donut; the lit mark a lighter step. */
+  --series: #3a3c40;
+  --series-hi: #9a9ca0;
+  /* Context lines that are not the subject, like last cycle. */
+  --chart-muted: #9a9ca0;
+  /* Neutral chart marks: 3:1 against white. */
+  --mark: #8a8b86;
+
+  /* Pocket colours: each pocket's chip and, while it is active, the app's accent. */
+  --pocket-graphite: #8e9095;
+  --pocket-blue: #3d7bff;
+  --pocket-orange: #ff7a2f;
+  --pocket-green: #20b26b;
+  --pocket-purple: #9466ff;
+  --pocket-pink: #f0458c;
+  --pocket-teal: #14b8c4;
+
+  --focus: var(--ink);
+
+  /* shadcn roles mapped onto the world */
+  --background: var(--ground);
+  --foreground: var(--ink);
+  --card: var(--board);
+  --card-foreground: var(--ink);
+  --popover: var(--board);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--ground);
+  --secondary: var(--plate);
+  --secondary-foreground: var(--ink);
+  --muted: var(--plate);
+  --muted-foreground: var(--ink-2);
+  --accent: var(--plate);
+  --accent-foreground: var(--ink);
+  --destructive: var(--over-text);
+  --destructive-foreground: #ffffff;
+  --border: var(--rule);
+  --input: var(--rule-strong);
+  --ring: var(--ink);
+  --radius: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --ground: #0d0d0e;
+    --plate: #1d1d20;
+    --ink: #ececea;
+    --ink-2: #9b9da2;
+    --ink-3: #5d5f64;
+    --rule: #26272a;
+    --rule-strong: #33343a;
+    --mark: #707277;
+    --chart-muted: #6e7075;
+    --series: #c9cbcf;
+    --series-hi: #6e7075;
+    --board: #141416;
+    --flap: #1d1d20;
+    --board-line: #26272a;
+    --on-board: #ececea;
+    --on-board-2: #9b9da2;
+    --ok: #3cc27f;
+    --ok-text: #4fd893;
+    --ahead: #e3a43a;
+    --ahead-text: #e3a43a;
+    --over: #f06464;
+    --over-text: #ff6b6b;
+    --destructive-foreground: #0d0d0e;
+  }
+}
+
+@theme inline {
+  --font-sans: 'Geist Figures', 'IBM Plex Sans Thai', 'Anuphan Variable', -apple-system, BlinkMacSystemFont, 'Sukhumvit Set', 'Segoe UI', Roboto, sans-serif;
+  /* Figures: every amount, date number and count, in tabular digits so columns line up; Thai sets in IBM Plex Sans Thai. */
+  --font-board: 'Geist', 'IBM Plex Sans Thai', 'Anuphan Variable', -apple-system, 'Sukhumvit Set', sans-serif;
+  --color-ground: var(--ground);
+  --color-plate: var(--plate);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-mark: var(--mark);
+  --color-series: var(--series);
+  --color-series-hi: var(--series-hi);
+  --color-board: var(--board);
+  --color-flap: var(--flap);
+  --color-board-line: var(--board-line);
+  --color-on-board: var(--on-board);
+  --color-on-board-2: var(--on-board-2);
+  --color-sign: var(--sign);
+  --color-sign-ink: var(--sign-ink);
+  --color-ok: var(--ok);
+  --color-ahead: var(--ahead);
+  --color-over: var(--over);
+  --color-ok-text: var(--ok-text);
+  --color-ahead-text: var(--ahead-text);
+  --color-over-text: var(--over-text);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  /* Small, even corners: 6px on panels and controls, 2px on small marks. */
+  --radius-xs: 2px;
+  --radius-sm: 6px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
+  --radius-2xl: 8px;
+  --radius-3xl: 8px;
+  --radius-4xl: 8px;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    /* Classic scrollbars take width only on pages that scroll; reserve it always so pages don't change width. */
+    scrollbar-gutter: stable;
+  }
+  /* The gutter already holds the scrollbar's space while a dialog locks scroll; the lock's own margin would reserve it twice. */
+  html body[data-scroll-locked] {
+    margin-right: 0 !important;
+  }
+  body {
+    @apply bg-ground text-ink font-sans antialiased;
+    font-variant-numeric: tabular-nums;
+    /* Thai stacks tone marks above vowels; give lines room. */
+    line-height: 1.45;
+    caret-color: var(--ink);
+  }
+  ::selection {
+    background: var(--sign);
+    color: var(--sign-ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  button,
+  [role='button'],
+  a {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  input,
+  textarea,
+  select {
+    font-size: 16px; /* stops iOS zooming into fields */
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--ink-3);
+    border: 3px solid var(--ground);
+  }
+}
+
+@layer components {
+  /* Money set aside for bills still to pay: hatched, in the current text colour. */
+  .set-aside {
+    background: repeating-linear-gradient(135deg, currentColor 0 2px, transparent 2px 4px);
+  }
+  /* Labels: sentence case in the text face. They win over a figure face set beside them, so a label
+     never turns monospaced. */
+  .caps {
+    font-family: var(--font-sans) !important;
+    font-weight: 500 !important;
+    letter-spacing: 0 !important;
+  }
+  /* A panel: white, one hairline, small corners. */
+  .board {
+    background: var(--board);
+    color: var(--on-board);
+    border: 1px solid var(--board-line);
+  }
+  /* A popover hangs under its anchor, as wide as it, where the browser can anchor it; elsewhere it stays centred. */
+  .anchored {
+    width: 16rem;
+  }
+  @supports (position-area: bottom) {
+    .anchored {
+      inset: auto;
+      margin: 6px 0 0;
+      position-area: bottom span-right;
+      width: anchor-size(width);
+    }
+  }
+}
+
+/* Page title. */
+.title-large {
+  font-family: var(--font-sans);
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/*
+ * Split-flap figure (the signature): one tile per character, split across the middle.
+ * A tile mounts when its character changes, so a changed digit flips in; on arrival the figure flips in left to right.
+ */
+.flaps {
+  display: inline-flex;
+  gap: 0.06em;
+  perspective: 600px;
+  font-family: var(--font-board);
+  font-weight: 500;
+  line-height: 1;
+}
+.flap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 0.84em;
+  height: 1.2em;
+  border-radius: 3px;
+  background: var(--flap);
+  color: var(--on-board);
+  animation: flap-in 280ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 34ms);
+  transform-origin: 50% 50%;
+}
+.flap::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: calc(50% - 0.5px);
+  height: 1px;
+  background: var(--board);
+}
+.flap[data-k='sym'] {
+  width: 0.62em;
+  color: var(--on-board-2);
+}
+.flap[data-k='sym'] > span {
+  font-size: 0.56em;
+}
+.flap[data-k='sep'] {
+  width: 0.36em;
+}
+.flap[data-k='gap'] {
+  width: 0.3em;
+  background: none;
+  box-shadow: none;
+}
+.flap[data-k='gap']::after {
+  display: none;
+}
+/* Dimmed tiles: an empty amount. */
+.flaps[data-dim] .flap {
+  color: var(--on-board-2);
+}
+@keyframes flap-in {
+  from {
+    transform: rotateX(-86deg);
+    filter: brightness(1.8);
+  }
+  to {
+    transform: none;
+    filter: none;
+  }
+}
+
+/* Switching pocket crossfades the page while the figures flip. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 200ms;
+}
+
+/* In forced colours, fills and box-shadow rings disappear; the chosen chip, thumb, day or tab keeps an outline. */
+@media (forced-colors: active) {
+  [aria-checked='true'],
+  [aria-pressed='true'],
+  [aria-selected='true'],
+  [aria-current='true'] {
+    outline: 2px solid CanvasText;
+    outline-offset: -2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flap {
+    animation: none;
+  }
+  /* Dialogs, popovers and recap cards appear without zooming or sliding. */
+  .animate-in,
+  .animate-out {
+    animation: none !important;
+  }
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

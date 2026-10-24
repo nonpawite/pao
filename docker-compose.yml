@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tracker
+      # Postgres is reachable only from the app container and this machine's 127.0.0.1.
+      POSTGRES_PASSWORD: tracker
+      POSTGRES_DB: tracker
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      # For `npm run dev` on this machine.
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tracker"]
+      interval: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://tracker:tracker@db:5432/tracker
+      # Set to "false" once every family member has an account, then run `docker compose up -d` again.
+      ALLOW_SIGNUP: "true"
+      APP_TZ: Asia/Bangkok
+    volumes:
+      # The auth secret the app creates on first start.
+      - app-data:/app/data
+    ports:
+      # Change the left number to serve on another port.
+      - "3000:3000"
+
+volumes:
+  db-data:
+  app-data:
