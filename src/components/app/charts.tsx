@@ -86,10 +86,18 @@ export function useCategoryColor() {
 
 type Part = { id: string; name: string; value: number; color: string; slot: number; other?: boolean }
 
-/** Part-to-whole: the biggest categories by size in the legend, each in its own colour; the rest folded into Other. */
-export function WhereItWent({ categories, otherLabel }: { categories: Array<{ id: string; name: string; value: number }>; otherLabel: string }) {
+/** Part-to-whole: the biggest categories by size in the legend, each in its own colour; the rest folded into Other. Amounts in `currency`, else the active pocket's. */
+export function WhereItWent({
+  categories,
+  otherLabel,
+  currency,
+}: {
+  categories: Array<{ id: string; name: string; value: number }>
+  otherLabel: string
+  currency?: string
+}) {
   const slotOf = useCategorySlot()
-  const { money } = useMoney()
+  const { money } = useMoney(currency)
   const shown = categories.filter((c) => c.value > 0)
   const total = shown.reduce((s, c) => s + c.value, 0)
   const [active, setActive] = useState<string | null>(null)
