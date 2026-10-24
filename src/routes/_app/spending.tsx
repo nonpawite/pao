@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react'
 import { z } from 'zod'
 
 import { WhereItWent } from '#/components/app/charts'
-import { useActivePocket, useShell, useT } from '#/components/app/context'
+import { useActivePocket, useMoney, useShell, useT } from '#/components/app/context'
 import { EntryRows } from '#/components/app/entry-list'
 import { PocketTabs } from '#/components/app/frame'
 import { BoardLine, Figure, PageTitle, Segmented, Tile, boardGrid, pageMain } from '#/components/app/kit'
 import { Picker } from '#/components/app/picker'
 import type { PickerOption } from '#/components/app/picker'
-import { formatBaht } from '#/lib/budget'
+import { totalsByCurrency } from '#/lib/money'
+import type { CurrencyTotal } from '#/lib/money'
 import { cn } from '#/lib/utils'
 import { getSpending } from '#/server/spending'
 import type { SpendingData } from '#/server/spending'
@@ -47,6 +48,9 @@ function Spending() {
   const s = Route.useSearch()
   const navigate = useNavigate({ from: '/spending' })
   const { t, day, range } = useT()
+  const { money } = useMoney()
+  // Each currency keeps its own figure: ฿13,788 · ¥4,200, never a sum (ADR 0001).
+  const amounts = (totals: CurrencyTotal[], sign?: boolean) => totals.map((c) => money(c.total, { currency: c.currency, sign })).join(' · ')
   // Any filter change starts the list from the top again.
   const set = (patch: Partial<Search>) => navigate({ search: (prev) => ({ ...prev, ...patch, n: PAGE }), replace: true, resetScroll: false })
   const clear = () => navigate({ search: {}, replace: true, resetScroll: false })
@@ -56,7 +60,7 @@ function Spending() {
     data.from && data.to ? range(data.from, data.to) : data.from ? `${t('from')} ${day(data.from)}` : data.to ? `${t('to')} ${day(data.to)}` : t('periodAll')
   const count = data.totals.count === 1 ? t('entryOne') : t('entriesN', { n: data.totals.count })
   const pockets = s.pocket === 'all' ? new Map(data.pockets.map((p) => [p.id, p])) : undefined
-  const byCategory = data.byCategory.map((c) => (c.name ? c : { ...c, id: 'none', name: t('otherCategories') }))
+  const order = data.totals.spent.map((c) => c.currency)
 
   return (
     <main className={pageMain}>
@@ -69,21 +73,40 @@ function Spending() {
         {/* Phone reads the sum, the list, then the donut; desktop keeps sum and donut beside the list while it scrolls. */}
         <div className="contents lg:sticky lg:top-8 lg:col-span-2 lg:col-start-5 lg:row-start-2 lg:grid lg:content-start lg:gap-4 lg:self-start">
           <Tile title={t('spent')}>
-            <Figure text={formatBaht(data.totals.spent)} className="text-[30px] lg:text-[32px]" />
-            {data.totals.earned > 0 && (
-              <BoardLine left={t('earned')} right={<span className="text-ok-text">{formatBaht(data.totals.earned, { sign: true })}</span>} />
-            )}
+            {/* One figure per currency, stacked, so a narrow board never splits a pair mid-line. */}
+            {data.totals.spent.map((c) => (
+              <Figure key={c.currency} text={money(c.total, { currency: c.currency })} className="text-[30px] lg:text-[32px]" />
+            ))}
+            {data.totals.earned.length > 0 && <BoardLine left={t('earned')} right={<span className="text-ok-text">{amounts(data.totals.earned, true)}</span>} />}
           </Tile>
-          {data.totals.spent > 0 && (
-            <Tile title={t('whereItWent')} className="order-last lg:order-none">
-              <WhereItWent categories={byCategory} otherLabel={t('otherCategories')} />
+          {data.byCategory.map((g) => (
+            // A second currency gets its own breakdown, named by its code.
+            <Tile key={g.currency} title={t('whereItWent')} aside={data.byCategory.length > 1 && g.currency} className="order-last lg:order-none">
+              <WhereItWent
+                categories={g.categories.map((c) => (c.name ? c : { ...c, id: 'none', name: t('otherCategories') }))}
+                otherLabel={t('otherCategories')}
+                currency={g.currency}
+              />
             </Tile>
-          )}
+          ))}
         </div>
 
         <Tile title={t('entries')} aside={count} className="lg:col-span-4 lg:row-start-2">
           {data.entries.length ? (
-            <EntryRows entries={data.entries} today={data.today} who={data.members.length > 1} pockets={pockets} grouped />
+            <EntryRows
+              entries={data.entries}
+              today={data.today}
+              who={data.members.length > 1}
+              pockets={pockets}
+              grouped
+              // A day across pockets can mix currencies, so its spend is one figure per currency, in the totals' order.
+              dayAside={(d) => {
+                const spent = totalsByCurrency(
+                  data.entries.filter((e) => e.occurredOn === d && e.kind === 'expense').map((e) => ({ currency: e.currency, total: e.amount })),
+                ).sort((a, b) => order.indexOf(a.currency) - order.indexOf(b.currency))
+                return spent.length > 0 && <span>{amounts(spent)}</span>
+              }}
+            />
           ) : (
             <div className="grid justify-items-start gap-3 py-2">
               <span className="text-[15px] text-on-board-2">{t('noMatches')}</span>

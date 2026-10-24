@@ -4,7 +4,7 @@ import type { PointerEvent, ReactNode } from 'react'
 import { addDays, formatBaht } from '#/lib/budget'
 import { monthNames } from '#/lib/i18n'
 import { cn } from '#/lib/utils'
-import { useActivePocket, useShell, useT } from './context'
+import { useActivePocket, useMoney, useShell, useT } from './context'
 import { DotsThree } from '@phosphor-icons/react'
 
 import { Figure, glyphFor } from './kit'
@@ -93,9 +93,18 @@ export function useCategoryColor() {
 
 type Part = { id: string; name: string; value: number; color: string; slot: number; other?: boolean }
 
-/** Part-to-whole: the biggest categories by size in the legend, each in its own colour; the rest folded into Other. */
-export function WhereItWent({ categories, otherLabel }: { categories: Array<{ id: string; name: string; value: number }>; otherLabel: string }) {
+/** Part-to-whole: the biggest categories by size in the legend, each in its own colour; the rest folded into Other. Amounts in `currency`, else the active pocket's. */
+export function WhereItWent({
+  categories,
+  otherLabel,
+  currency,
+}: {
+  categories: Array<{ id: string; name: string; value: number }>
+  otherLabel: string
+  currency?: string
+}) {
   const slotOf = useCategorySlot()
+  const { money } = useMoney(currency)
   const shown = categories.filter((c) => c.value > 0)
   const total = shown.reduce((s, c) => s + c.value, 0)
   const [active, setActive] = useState<string | null>(null)
@@ -118,7 +127,7 @@ export function WhereItWent({ categories, otherLabel }: { categories: Array<{ id
         <Donut parts={ring} total={total} active={active} onActive={setActive}>
           <span className="caps max-w-[7rem] truncate text-[11px] text-on-board-2">{focus.name}</span>
           <Figure text={`${pct(focus.value)}%`} className="text-[26px]" />
-          <span className="font-board text-[13px] text-on-board-2">{formatBaht(focus.value)}</span>
+          <span className="font-board text-[13px] text-on-board-2">{money(focus.value)}</span>
         </Donut>
         <ul className="grid">
           {parts.map((p) => {
@@ -136,7 +145,7 @@ export function WhereItWent({ categories, otherLabel }: { categories: Array<{ id
                 <i aria-hidden className="size-2.5 rounded-xs" style={{ background: p.color }} />
                 <span aria-hidden className="grid place-items-center text-on-board-2">{G && <G className="size-4" />}</span>
                 <span className="truncate text-[15px]">{p.name}</span>
-                <span className="text-right font-board text-[15px] font-semibold">{formatBaht(p.value)}</span>
+                <span className="text-right font-board text-[15px] font-semibold">{money(p.value)}</span>
                 <span className="text-right font-board text-[13px] text-on-board-2">{pct(p.value)}%</span>
               </li>
             )
