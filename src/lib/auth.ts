@@ -5,6 +5,7 @@ import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import { db } from '../db/index.ts'
 import * as schema from '../db/schema.ts'
 import { createPersonalSpace } from '../server/setup.ts'
+import { pickLocale } from './i18n.ts'
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: 'pg', schema }),
@@ -23,7 +24,7 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (user) => {
-          await createPersonalSpace(user.id, user.locale === 'th' ? 'th' : 'en')
+          await createPersonalSpace(user.id, pickLocale([String(user.locale)]))
         },
       },
     },

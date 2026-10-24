@@ -7,7 +7,7 @@ import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { authClient } from '#/lib/auth-client'
-import { formatDay } from '#/lib/i18n'
+import { formatDay, localeCodes, locales, pickLocale } from '#/lib/i18n'
 import type { Locale } from '#/lib/i18n'
 import { getSessionUser } from '#/server/shell'
 
@@ -30,9 +30,9 @@ function Login() {
   const { t } = makeT(locale)
   useDocumentTitle(mode === 'in' ? t('signIn') : t('signUp'))
   // Start in the browser's language; the server render stays English, so this waits for the client.
-  useEffect(() => {
-    if (navigator.language.toLowerCase().startsWith('th')) setLocale('th')
-  }, [])
+  useEffect(() => setLocale(pickLocale(navigator.languages)), [])
+  // shortcut: the switch steps through the registry; past three or so languages, make it a menu.
+  const other = localeCodes[(localeCodes.indexOf(locale) + 1) % localeCodes.length]
   useEffect(() => {
     document.documentElement.lang = locale
   }, [locale])
@@ -56,10 +56,10 @@ function Login() {
       <div className="flex justify-end">
         <button
           type="button"
-          onClick={() => setLocale(locale === 'en' ? 'th' : 'en')}
+          onClick={() => setLocale(other)}
           className="caps -my-3 -mr-2 h-11 px-2 text-[13px] underline decoration-2 underline-offset-4"
         >
-          <span lang={locale === 'en' ? 'th' : 'en'}>{locale === 'en' ? 'ภาษาไทย' : 'English'}</span>
+          <span lang={other}>{locales[other].name}</span>
         </button>
       </div>
 

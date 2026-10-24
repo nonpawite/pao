@@ -13,7 +13,8 @@ import { PocketTabs } from '#/components/app/frame'
 import { Board, CategoryGlyph, Figure, PageTitle, Segmented, Tile, boardGrid, pageMain } from '#/components/app/kit'
 import { isOwed } from '#/lib/bills'
 import { addDays, daysInMonth, diffDays, formatBaht, iso, weekday } from '#/lib/budget'
-import { monthNames, ordinal } from '#/lib/i18n'
+import { locales, monthNames, ordinal } from '#/lib/i18n'
+import type { Locale } from '#/lib/i18n'
 import { cn } from '#/lib/utils'
 import { getBillsPage } from '#/server/bills'
 import type { BillsPage } from '#/server/bills'
@@ -201,9 +202,9 @@ function ListView({ data, onEdit, onAdd }: { data: BillsPage; onEdit?: (b: Param
 }
 
 /** Month names as people say them: "October 2026", "ตุลาคม 2569". */
-const monthLabel = (month: string, locale: string) => {
+const monthLabel = (month: string, locale: Locale) => {
   const [y, m] = month.split('-').map(Number)
-  return new Intl.DateTimeFormat(locale === 'th' ? 'th-TH' : 'en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
+  return new Intl.DateTimeFormat(locales[locale].tag, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
     new Date(Date.UTC(y, m - 1, 1)),
   )
 }
@@ -256,9 +257,10 @@ function CalendarView({ data, onEdit, onAdd }: { data: BillsPage; onEdit?: (b: P
   const cells = Array.from({ length: Math.ceil((lead + length) / 7) * 7 }, (_, i) => addDays(first, i - lead))
   const payday = iso(y, m, Math.min(data.payday, length))
   // 18 Oct 2026 is a Sunday: count from it to name the week in the user's order.
+  // Thai long names open with วัน ("day"), which the column heads drop; other languages pass through.
   const weekdays = (style: 'long' | 'short') =>
     Array.from({ length: 7 }, (_, i) =>
-      new Intl.DateTimeFormat(locale === 'th' ? 'th-TH' : 'en-GB', { weekday: style, timeZone: 'UTC' })
+      new Intl.DateTimeFormat(locales[locale].tag, { weekday: style, timeZone: 'UTC' })
         .format(new Date(Date.UTC(2026, 9, 18 + ((shell.user.weekStart + i) % 7))))
         .replace(/^วัน/, ''),
     )

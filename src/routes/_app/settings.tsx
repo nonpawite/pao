@@ -15,6 +15,7 @@ import { Label } from '#/components/ui/label'
 import { authClient } from '#/lib/auth-client'
 import { pocketBg, pocketColors } from '#/lib/colors'
 import type { PocketColor } from '#/lib/colors'
+import { localeCodes, locales } from '#/lib/i18n'
 import type { MessageKey } from '#/lib/i18n'
 import { cn } from '#/lib/utils'
 import {
@@ -78,10 +79,7 @@ function Settings() {
             label={t('language')}
             value={shell.user.locale}
             onChange={(v) => run(() => setLocale({ data: { locale: v } }))}
-            options={[
-              { value: 'en', label: 'English' },
-              { value: 'th', label: <span lang="th">ไทย</span> },
-            ]}
+            options={localeCodes.map((code) => ({ value: code, label: <span lang={code}>{locales[code].name}</span> }))}
             className="w-44"
           />
         </Row>
