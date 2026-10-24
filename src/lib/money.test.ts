@@ -51,18 +51,21 @@ test('parsing sums and thousands separators', () => {
 })
 
 test('parsing ignores a leading or trailing symbol of any currency', () => {
-  assert.equal(parseAmount('\u0e3f65'), 6_500)
+  assert.equal(parseAmount('฿65'), 6_500)
   assert.equal(parseAmount('$12.50'), 1_250)
-  assert.equal(parseAmount('12.50 \u20ac'), 1_250)
-  assert.equal(parseAmount('\u00a51,000'), 100_000)
+  assert.equal(parseAmount('12.50 €'), 1_250)
+  assert.equal(parseAmount('¥1,000'), 100_000)
   assert.equal(parseAmount('US$12'), 1_200)
   assert.equal(parseAmount('CHF 12'), 1_200)
   assert.equal(parseAmount('12 KWD'), 1_200)
-  assert.equal(parseAmount('\u0e3f120+\u0e3f45'), 16_500)
+  assert.equal(parseAmount('USD 12'), 1_200)
+  assert.equal(parseAmount('KWD 12.5'), 1_250)
+  assert.equal(parseAmount('12 US$'), 1_200)
+  assert.equal(parseAmount('฿120+฿45'), 16_500)
 })
 
 test('parsing rejects junk', () => {
-  for (const junk of ['', '0', 'abc', '$', '12-3', '12+', '1.234', '12..5', '1e3', '12abc3']) {
+  for (const junk of ['', '0', 'abc', '$', '12-3', '12+', '1.234', '12..5', '1e3', '12abc3', '12abc', '12 xyz', 'abc12', 'xyz$12']) {
     assert.equal(parseAmount(junk), null, junk)
   }
 })

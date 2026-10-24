@@ -15,10 +15,30 @@ export function formatMoney(hundredths: number, currency: string, locale: string
   return `${sign}${n}`
 }
 
+let letterSymbols: Set<string> | undefined
+
+/** ISO codes (USD, CHF) and code-style symbols (US$, HK$) for every currency the platform knows. */
+function isLetterSymbol(s: string) {
+  // shortcut: code-style symbols come from the shipped locales only, add new locales' tags when they ship.
+  letterSymbols ??= new Set(
+    Intl.supportedValuesOf('currency').flatMap((currency) => [
+      currency,
+      ...['en-GB', 'th-TH'].map(
+        (locale) =>
+          new Intl.NumberFormat(locale, { style: 'currency', currency }).formatToParts(0).find((p) => p.type === 'currency')!.value,
+      ),
+    ]),
+  )
+  return letterSymbols.has(s.toUpperCase())
+}
+
 /** Parse a typed amount, allowing simple sums like "120+45+30". Returns hundredths, or null if invalid. */
 export function parseAmount(input: string): number | null {
-  // Separators and symbols ($, ฿) go anywhere; letter symbols (US$, CHF) only at either end.
-  const clean = input.replace(/[,\s\p{Sc}]/gu, '').replace(/^\p{L}+|\p{L}+$/gu, '')
+  // Symbols ($, ฿) may go anywhere; letters only as a currency code or code-style symbol at either end.
+  const clean = input
+    .replace(/[,\s]/g, '')
+    .replace(/^\p{L}+\p{Sc}?|\p{L}+\p{Sc}?$/gu, (s) => (isLetterSymbol(s) ? '' : s))
+    .replace(/\p{Sc}/gu, '')
   if (!/^\d+(\.\d{1,2})?(\+\d+(\.\d{1,2})?)*$/.test(clean)) return null
   const hundredths = clean.split('+').reduce((sum, p) => sum + Math.round(Number(p) * 100), 0)
   return hundredths > 0 ? hundredths : null
