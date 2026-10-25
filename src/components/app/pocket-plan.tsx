@@ -38,10 +38,12 @@ export function PocketPlan({ pocket }: { pocket: Shell['pockets'][number] }) {
   const cycleTotal = pocket.categories.filter((c) => c.limitType === 'cycle').reduce((s, c) => s + c.limitAmount, 0)
   const dayTotal = pocket.categories.filter((c) => c.limitType === 'day').reduce((s, c) => s + c.limitAmount * next.length, 0)
 
-  const run = async (fn: () => Promise<unknown>) => {
+  // `done` confirms the action in a toast once it has gone through.
+  const run = async (fn: () => Promise<unknown>, done?: string) => {
     try {
       await fn()
       await router.invalidate()
+      if (done) toast.success(done)
       return true
     } catch {
       toast.error(t('somethingWrong'))
@@ -64,7 +66,7 @@ export function PocketPlan({ pocket }: { pocket: Shell['pockets'][number] }) {
             options={dayOptions}
             columns={7}
             display={dayName(pocket.cycleStartDay)}
-            onChange={(day) => run(() => setCycleStartDay({ data: { pocketId: pocket.id, day } }))}
+            onChange={(day) => run(() => setCycleStartDay({ data: { pocketId: pocket.id, day } }), t('cycleStartSaved', { day: dayName(day).toLocaleLowerCase() }))}
             className={cn(pickerClass, 'shrink-0')}
           />
         </div>
@@ -137,7 +139,7 @@ export function PocketPlan({ pocket }: { pocket: Shell['pockets'][number] }) {
                 )
                 if (ok) {
                   setEditing(null)
-                  toast(t('savedChanges'))
+                  toast.success(editing.id ? t('savedChanges') : t('nameAdded', { name: editing.name.trim() }))
                 }
               }}
             >
@@ -188,9 +190,9 @@ export function PocketPlan({ pocket }: { pocket: Shell['pockets'][number] }) {
                       const id = editing.id!
                       if (!(await run(() => archiveCategory({ data: { pocketId: pocket.id, id } })))) return
                       setEditing(null)
-                      toast(t('removedName', { name: editing.name }), {
+                      toast.success(t('removedName', { name: editing.name }), {
                         duration: 10000,
-                        action: { label: t('undo'), onClick: () => void run(() => restoreCategory({ data: { pocketId: pocket.id, id } })) },
+                        action: { label: t('undo'), onClick: () => void run(() => restoreCategory({ data: { pocketId: pocket.id, id } }), t('restoredName', { name: editing.name })) },
                       })
                     }}
                   >

@@ -2,6 +2,7 @@ import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { Bank, CaretDown, Plus, X } from '@phosphor-icons/react'
 import { useEffect, useLayoutEffect, useState } from 'react'
 import type { FormEvent } from 'react'
+import { toast } from 'sonner'
 
 import { oneTapClass } from '#/components/app/add-entry'
 import { dayChoices, pickerClass } from '#/components/app/bill-form'
@@ -112,6 +113,7 @@ function Setup() {
         },
       })
       await router.navigate({ to: '/' })
+      toast.success(t('pocketReady'))
     } catch {
       setError(t('somethingWrong'))
       setBusy(false)

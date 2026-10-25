@@ -374,6 +374,9 @@ A Phosphor outline pictogram picked from the category name, in ink-2, with no ti
 ### Bills Calendar
 A month grid of white cells on hairlines. Day numbers in Geist; picked and hovered cells fill plate; late bills in over red; today's date sits in a small accent badge with an ink number; the pocket's cycle start carries a "Payday" label on desktop ("Cycle starts" in a shared pocket) and a short accent line under the date on the phone, where the word does not fit.
 
+### Toasts
+Every action that saves something confirms in a toast: a white panel with one hairline (6px corners), a 20px Phosphor icon, then one plain sentence that names what happened ("Weeks now start on Monday", "Main removed"). Success wears a check circle in ok green, failure an x circle in over red with the one shared sentence "That did not go through. Check your connection and try again."; the server's own error text never reaches a toast. Removals carry an Undo action, and Undo confirms too. Bottom right on wide screens; at the top on a phone, where the bottom holds the tab bar and the add sheet's Add button. Adding an expense confirms on the line inside the sheet instead.
+
 ### Members and Invites (admin only)
 A Settings Group: each member as a ruled row (avatar, name over email in ink-2, "Admin" in the label style at the right for the admin), then pending invites (a ticket pictogram, the name it is for, its code in the figure face and the date it stops working, a ghost "Copy link" and a close glyph to revoke), then a field for who it is for and an outline "Invite" button. On sign-up, the invite code field comes first, in the figure face with wide tracking.
 

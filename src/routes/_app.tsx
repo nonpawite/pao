@@ -1,5 +1,5 @@
 import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
-import { useLayoutEffect } from 'react'
+import { useLayoutEffect, useSyncExternalStore } from 'react'
 
 import { AddEntryProvider, useAddEntry } from '#/components/app/add-entry'
 import { pocketBg } from '#/lib/colors'
@@ -46,10 +46,20 @@ function AppLayout() {
   )
 }
 
+const wideQuery = '(min-width: 1024px)'
+const watchWide = (onChange: () => void) => {
+  const query = matchMedia(wideQuery)
+  query.addEventListener('change', onChange)
+  return () => query.removeEventListener('change', onChange)
+}
+
 function Frame() {
   const { open } = useAddEntry()
   const { t } = useT()
   const theme = useTheme()
+  // Toasts sit bottom right on a wide screen; on a phone the bottom holds the tab bar and the add sheet's Add button,
+  // so they come in at the top there.
+  const wide = useSyncExternalStore(watchWide, () => matchMedia(wideQuery).matches, () => false)
   return (
     <>
       <a
@@ -63,7 +73,7 @@ function Frame() {
         <Outlet />
       </div>
       <TabBar onAdd={open} />
-      <Toaster theme={theme} position="top-center" containerAriaLabel={t('notifications')} />
+      <Toaster theme={theme} position={wide ? 'bottom-right' : 'top-center'} containerAriaLabel={t('notifications')} />
     </>
   )
 }

@@ -2,6 +2,7 @@ import { useRouter } from '@tanstack/react-router'
 import { Receipt } from '@phosphor-icons/react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
+import { toast } from 'sonner'
 
 import { Button } from '#/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/components/ui/dialog'
@@ -107,13 +108,15 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
     setConfirming(false)
   }
 
-  const run = async (fn: () => Promise<unknown>) => {
+  // `done` confirms the action in a toast once the dialog closes on it.
+  const run = async (fn: () => Promise<unknown>, done: string) => {
     setBusy(true)
     setError('')
     try {
       await fn()
       await router.invalidate()
       close()
+      toast.success(done)
     } catch {
       setError(t('somethingWrong'))
     } finally {
@@ -151,6 +154,7 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
                     month: draft.repeat === 'yearly' ? draft.month : null,
                   },
                 }),
+                t('billSaved', { name: draft.name.trim() }),
               )
             }}
           >
@@ -262,7 +266,7 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
                   <Button type="button" variant="secondary" onClick={() => setConfirming(false)}>
                     {t('cancel')}
                   </Button>
-                  <Button type="button" variant="destructive" disabled={busy} onClick={() => void run(() => deleteBill({ data: { pocketId: pocket.id, id: draft.id! } }))}>
+                  <Button type="button" variant="destructive" disabled={busy} onClick={() => void run(() => deleteBill({ data: { pocketId: pocket.id, id: draft.id! } }), t('nameDeleted', { name: draft.name }))}>
                     {t('deleteBill')}
                   </Button>
                 </div>

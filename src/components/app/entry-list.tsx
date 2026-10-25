@@ -145,13 +145,18 @@ export function EntryRows({
                 try {
                   const was = await deleteEntry({ data: { id: removing.id } })
                   void router.invalidate()
-                  toast(t('undone'), {
+                  toast.success(t('undone'), {
                     duration: 10000,
                     action: {
                       label: t('undo'),
                       onClick: async () => {
-                        await addEntry({ data: was })
-                        await router.invalidate()
+                        try {
+                          await addEntry({ data: was })
+                          await router.invalidate()
+                          toast.success(t('entryBack'))
+                        } catch {
+                          toast.error(t('somethingWrong'))
+                        }
                       },
                     },
                   })

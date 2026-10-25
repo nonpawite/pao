@@ -18,7 +18,7 @@ import { Label } from '#/components/ui/label'
 import { authClient } from '#/lib/auth-client'
 import { pocketBg, pocketColors } from '#/lib/colors'
 import type { PocketColor } from '#/lib/colors'
-import { initials, localeCodes, locales } from '#/lib/i18n'
+import { initials, localeCodes, locales, translate } from '#/lib/i18n'
 import type { MessageKey } from '#/lib/i18n'
 import { themes } from '#/lib/theme'
 import { cn } from '#/lib/utils'
@@ -51,10 +51,12 @@ export const Route = createFileRoute('/_app/settings')({
 function useRun() {
   const router = useRouter()
   const { t } = useT()
-  return async (fn: () => Promise<unknown>) => {
+  // `done` confirms the action in a toast once it has gone through.
+  return async (fn: () => Promise<unknown>, done?: string) => {
     try {
       await fn()
       await router.invalidate()
+      if (done) toast.success(done)
       return true
     } catch {
       // Server messages are English and technical; the user gets one plain sentence in their language.
@@ -88,7 +90,7 @@ function Settings() {
           <Segmented
             label={t('language')}
             value={shell.user.locale}
-            onChange={(v) => run(() => setLocale({ data: { locale: v } }))}
+            onChange={(v) => run(() => setLocale({ data: { locale: v } }), translate(v, 'languageChanged'))}
             options={localeCodes.map((code) => ({ value: code, label: <span lang={code}>{locales[code].name}</span> }))}
             className="w-44"
           />
@@ -101,7 +103,7 @@ function Settings() {
           <Segmented
             label={t('weekStarts')}
             value={String(shell.user.weekStart) as '0' | '1'}
-            onChange={(v) => run(() => setWeekStart({ data: { weekStart: v === '1' ? 1 : 0 } }))}
+            onChange={(v) => run(() => setWeekStart({ data: { weekStart: v === '1' ? 1 : 0 } }), t('weekStartChanged', { day: t(v === '1' ? 'monday' : 'sunday') }))}
             options={[
               { value: '0', label: t('sunday') },
               { value: '1', label: t('monday') },
@@ -137,9 +139,9 @@ function Settings() {
               aria-label={`${t('remove')} ${a.name}`}
               onClick={async () => {
                 if (!(await run(() => archiveBankAccount({ data: { id: a.id } })))) return
-                toast(t('removedName', { name: a.name }), {
+                toast.success(t('removedName', { name: a.name }), {
                   duration: 10000,
-                  action: { label: t('undo'), onClick: () => void run(() => restoreBankAccount({ data: { id: a.id } })) },
+                  action: { label: t('undo'), onClick: () => void run(() => restoreBankAccount({ data: { id: a.id } }), t('restoredName', { name: a.name })) },
                 })
               }}
               className="-mr-2 grid size-11 place-items-center rounded-sm text-ink-2 hover:bg-plate hover:text-ink"
@@ -153,7 +155,7 @@ function Settings() {
             className="flex gap-2"
             onSubmit={async (e) => {
               e.preventDefault()
-              if (account.trim() && (await run(() => addBankAccount({ data: { name: account } })))) setAccount('')
+              if (account.trim() && (await run(() => addBankAccount({ data: { name: account } }), t('nameAdded', { name: account.trim() })))) setAccount('')
             }}
           >
             <Input value={account} onChange={(e) => setAccount(e.target.value)} placeholder={t('addAccount')} maxLength={40} aria-label={t('addAccount')} />
@@ -205,7 +207,7 @@ function Members({ data }: { data: NonNullable<Awaited<ReturnType<typeof getMemb
   const [name, setName] = useState('')
   const copy = async (code: string) => {
     await copyText(`${location.origin}/signup?invite=${code}`)
-    toast(t('linkCopied'))
+    toast.success(t('linkCopied'))
   }
 
   return (
@@ -235,7 +237,7 @@ function Members({ data }: { data: NonNullable<Awaited<ReturnType<typeof getMemb
           <button
             type="button"
             aria-label={t('revokeInvite', { name: i.name || i.code })}
-            onClick={() => run(() => revokeInvite({ data: { id: i.id } }))}
+            onClick={() => run(() => revokeInvite({ data: { id: i.id } }), t('inviteRevoked'))}
             className="-mr-3 grid size-11 shrink-0 place-items-center text-ink-2 transition-colors hover:text-ink"
           >
             <X weight="bold" className="size-4" />
@@ -253,7 +255,7 @@ function Members({ data }: { data: NonNullable<Awaited<ReturnType<typeof getMemb
             })
             if (!made) return
             setName('')
-            toast(t('inviteReady', { code }), { action: { label: t('copyLink'), onClick: () => void copy(code) } })
+            toast.success(t('inviteReady', { code }), { action: { label: t('copyLink'), onClick: () => void copy(code) } })
           }}
         >
           <Label htmlFor="invite-name" className="sr-only">
@@ -292,6 +294,7 @@ function Profile() {
         onSave={async (form) => {
           await renameUser({ data: { name: String(form.get('name')) } })
           await done()
+          toast.success(t('nameChanged'))
         }}
       >
         <Input name="name" defaultValue={shell.user.name} required maxLength={40} autoComplete="name" aria-label={t('name')} autoFocus />
@@ -305,6 +308,7 @@ function Profile() {
           const { taken } = await changeEmail({ data: { email: String(form.get('email')) } })
           if (taken) return t('emailTaken')
           await done()
+          toast.success(t('emailChanged'))
         }}
       >
         <Input name="email" type="email" defaultValue={shell.user.email} required autoComplete="email" aria-label={t('email')} autoFocus />
@@ -319,9 +323,10 @@ function Profile() {
             newPassword: String(form.get('new')),
             revokeOtherSessions: true,
           })
-          if (res.error) return res.error.code === 'INVALID_PASSWORD' ? t('wrongPassword') : res.error.message || t('somethingWrong')
+          // Plain sentences in the member's language, never the server's own message.
+          if (res.error) return res.error.code === 'INVALID_PASSWORD' ? t('wrongPassword') : res.error.code === 'PASSWORD_TOO_SHORT' ? t('passwordShort') : t('somethingWrong')
           setOpen(null)
-          toast(t('passwordChanged'))
+          toast.success(t('passwordChanged'))
         }}
       >
         {/* Lets password managers file the new password under this account. */}
@@ -628,7 +633,7 @@ function PocketEditor({ pocket }: { pocket: Shell['pockets'][number] }) {
             className="grid gap-1.5"
             onSubmit={(e) => {
               e.preventDefault()
-              if (name.trim() && name.trim() !== pocket.name) void run(() => updatePocket({ data: { pocketId: pocket.id, name, color: pocket.color as PocketColor } }))
+              if (name.trim() && name.trim() !== pocket.name) void run(() => updatePocket({ data: { pocketId: pocket.id, name, color: pocket.color as PocketColor } }), t('savedChanges'))
             }}
           >
             <Label htmlFor="pocket-name">{t('name')}</Label>
@@ -641,7 +646,7 @@ function PocketEditor({ pocket }: { pocket: Shell['pockets'][number] }) {
           </form>
           <div className="grid gap-1.5">
             <span aria-hidden className="caps text-[12px] text-ink-2">{t('color')}</span>
-            <ColorPicker value={pocket.color} onChange={(c) => run(() => updatePocket({ data: { pocketId: pocket.id, name: pocket.name, color: c } }))} />
+            <ColorPicker value={pocket.color} onChange={(c) => run(() => updatePocket({ data: { pocketId: pocket.id, name: pocket.name, color: c } }), t('savedChanges'))} />
           </div>
         </>
       )}
@@ -663,7 +668,7 @@ function PocketEditor({ pocket }: { pocket: Shell['pockets'][number] }) {
                     <Button variant="secondary" onClick={() => setRemoving(null)}>
                       {t('cancel')}
                     </Button>
-                    <Button variant="destructive" onClick={() => run(() => removeMember({ data: { pocketId: pocket.id, userId: m.id } }))}>
+                    <Button variant="destructive" onClick={() => run(() => removeMember({ data: { pocketId: pocket.id, userId: m.id } }), t('memberRemoved', { name: m.name, pocket: pocket.name }))}>
                       {t('remove')}
                     </Button>
                   </div>
@@ -701,8 +706,9 @@ function PocketEditor({ pocket }: { pocket: Shell['pockets'][number] }) {
                     res = await addMember({ data: { pocketId: pocket.id, email } })
                   })
                   if (!ok) return
-                  if (res.found) setEmail('')
-                  else setInviteError(t('noAccountWithEmail'))
+                  if (!res.found) return setInviteError(t('noAccountWithEmail'))
+                  toast.success(t('memberAdded', { email, pocket: pocket.name }))
+                  setEmail('')
                 }}
               >
                 <Input
@@ -738,7 +744,7 @@ function PocketEditor({ pocket }: { pocket: Shell['pockets'][number] }) {
                 <Button variant="secondary" onClick={() => setLeaving(false)}>
                   {t('cancel')}
                 </Button>
-                <Button variant="destructive" onClick={() => run(() => leavePocket({ data: { pocketId: pocket.id } }))}>
+                <Button variant="destructive" onClick={() => run(() => leavePocket({ data: { pocketId: pocket.id } }), t('pocketLeft', { name: pocket.name }))}>
                   {t('leave')}
                 </Button>
               </div>
@@ -758,7 +764,7 @@ function PocketEditor({ pocket }: { pocket: Shell['pockets'][number] }) {
               <Button variant="secondary" onClick={() => setConfirming(false)}>
                 {t('cancel')}
               </Button>
-              <Button variant="destructive" onClick={() => run(() => deletePocket({ data: { pocketId: pocket.id } }))}>
+              <Button variant="destructive" onClick={() => run(() => deletePocket({ data: { pocketId: pocket.id } }), t('nameDeleted', { name: pocket.name }))}>
                 {t('deletePocket')}
               </Button>
             </div>
@@ -807,7 +813,7 @@ function PocketCurrency({ pocket }: { pocket: Shell['pockets'][number] }) {
             <Button variant="secondary" onClick={() => setNext(null)}>
               {t('cancel')}
             </Button>
-            <Button onClick={async () => (await run(() => setPocketCurrency({ data: { pocketId: pocket.id, currency: next } }))) && setNext(null)}>
+            <Button onClick={async () => (await run(() => setPocketCurrency({ data: { pocketId: pocket.id, currency: next } }), t('currencyChanged', { currency: next }))) && setNext(null)}>
               {t('changeCurrency')}
             </Button>
           </div>
@@ -830,7 +836,7 @@ function NewPocket({ onDone }: { onDone: () => void }) {
       className="grid gap-5"
       onSubmit={async (e) => {
         e.preventDefault()
-        if (name.trim() && (await run(() => createPocket({ data: { name, color, cycleStartDay: startDay } })))) onDone()
+        if (name.trim() && (await run(() => createPocket({ data: { name, color, cycleStartDay: startDay } }), t('pocketCreated', { name: name.trim() })))) onDone()
       }}
     >
       <DialogTitle>{t('newPocket')}</DialogTitle>
