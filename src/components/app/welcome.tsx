@@ -52,7 +52,7 @@ export function Welcome({
           <button type="button" onClick={() => setLocale(other)} className="caps -my-3 h-11 px-2 text-[13px] underline decoration-2 underline-offset-4">
             <span lang={other}>{locales[other].name}</span>
           </button>
-          <ThemeSwitch t={t} className="w-[7.5rem]" />
+          <ThemeSwitch t={t} className="w-[8.75rem]" />
         </div>
       </div>
 

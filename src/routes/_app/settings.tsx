@@ -36,7 +36,7 @@ import {
   setPocketCurrency,
   updatePocket,
 } from '#/server/settings'
-import { createInvite, getMembers, revokeInvite } from '#/server/invites'
+import { createInvite, getMembers, restoreInvite, revokeInvite } from '#/server/invites'
 import { setLocale, setWeekStart } from '#/server/shell'
 import type { Shell } from '#/server/shell'
 
@@ -237,7 +237,18 @@ function Members({ data }: { data: NonNullable<Awaited<ReturnType<typeof getMemb
           <button
             type="button"
             aria-label={t('revokeInvite', { name: i.name || i.code })}
-            onClick={() => run(() => revokeInvite({ data: { id: i.id } }), t('inviteRevoked'))}
+            onClick={async () => {
+              const out: { gone?: Awaited<ReturnType<typeof revokeInvite>> } = {}
+              if (!(await run(async () => void (out.gone = await revokeInvite({ data: { id: i.id } }))))) return
+              const back = out.gone
+              // Like every removal, a revoke can be undone: the same code comes back.
+              toast.success(t('inviteRevoked'), {
+                duration: 10000,
+                action: back
+                  ? { label: t('undo'), onClick: () => void run(() => restoreInvite({ data: back }), t('restoredName', { name: i.name || i.code })) }
+                  : undefined,
+              })
+            }}
             className="-mr-3 grid size-11 shrink-0 place-items-center text-ink-2 transition-colors hover:text-ink"
           >
             <X weight="bold" className="size-4" />

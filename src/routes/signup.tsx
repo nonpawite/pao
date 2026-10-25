@@ -6,6 +6,7 @@ import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { authClient } from '#/lib/auth-client'
+import type { MessageKey } from '#/lib/i18n'
 import { normalizeInviteCode } from '#/lib/invites'
 import { getSessionUser, getWelcome } from '#/server/shell'
 
@@ -29,6 +30,9 @@ function Signup() {
   const { t, locale } = welcome
   // While sign-up is by invite the code is required; an invite link brings one either way.
   const askCode = data.signup === 'invite' || !!search.invite
+  // A link whose invite is used, expired or revoked says so on arrival, before anything is typed.
+  const [codeEdited, setCodeEdited] = useState(false)
+  const deadInvite = !!search.invite && !data.invite && !codeEdited
   const [error, setError] = useState('')
   const { check, field, message } = useFieldErrors()
   const [busy, setBusy] = useState(false)
@@ -51,7 +55,15 @@ function Signup() {
       code ? { headers: { 'x-invite': code } } : undefined,
     )
     setBusy(false)
-    if (res.error) return setError(res.error.code === 'INVITE_INVALID' ? t('inviteInvalid') : res.error.message || t('signUpFailed'))
+    // Plain sentences in the member's language, never the server's own message.
+    const known: Record<string, MessageKey> = {
+      INVITE_INVALID: 'inviteInvalid',
+      USER_ALREADY_EXISTS: 'emailTaken',
+      USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: 'emailTaken',
+      PASSWORD_TOO_SHORT: 'passwordShort',
+      INVALID_EMAIL: 'emailInvalid',
+    }
+    if (res.error) return setError(t(known[res.error.code ?? ''] ?? 'signUpFailed'))
     await router.navigate({ to: '/setup' })
   }
 
@@ -88,10 +100,17 @@ function Signup() {
               autoCapitalize="characters"
               spellCheck={false}
               maxLength={20}
-              {...field('invite', !search.invite && 'invite-hint')}
+              {...field('invite', !search.invite && 'invite-hint', deadInvite && 'invite-dead')}
+              {...(deadInvite && { 'aria-invalid': true })}
+              onChange={() => setCodeEdited(true)}
               className="font-board font-medium tracking-wider uppercase"
             />
             {message('invite')}
+            {deadInvite && (
+              <p id="invite-dead" className="text-[13px] text-over-text">
+                {t('inviteInvalid')}
+              </p>
+            )}
             {!search.invite && (
               <p id="invite-hint" className="text-[13px] text-ink-2">
                 {t('inviteOnlyHint')}

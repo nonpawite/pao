@@ -172,7 +172,7 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
                   required={!draft.varies}
                   disabled={draft.varies}
                   value={draft.varies ? '' : draft.amount}
-                  onChange={(e) => setDraft({ ...draft, amount: typedAmount(e.target.value) })}
+                  onChange={(e) => setDraft({ ...draft, amount: typedAmount(e.target.value, true) })}
                 />
                 <BillChip on={draft.varies} onClick={() => setDraft({ ...draft, varies: !draft.varies })} className="h-11">
                   {t('varies')}

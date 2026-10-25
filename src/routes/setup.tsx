@@ -61,6 +61,8 @@ function Setup() {
   const [open, setOpen] = useState<string | null>(null)
   const [rowError, setRowError] = useState('')
   const [error, setError] = useState('')
+  // Finish without a category says so beside the categories, not down by the button.
+  const [needCategory, setNeedCategory] = useState(false)
   const [busy, setBusy] = useState(false)
   // Finish needs the page live: before hydration a tap would do nothing.
   const [live, setLive] = useState(false)
@@ -70,11 +72,13 @@ function Setup() {
   const symbol = currencySymbol(currency, tag)
   const limitOf = (c: Chosen) => (c.limitType === 'none' ? 0 : Math.max(0, parseAmount(c.amount, currency) ?? 0))
   const badLimit = (c: Chosen) => c.limitType !== 'none' && limitOf(c) <= 0
-  const limitLabel = (type: LimitType, limit: number) => (limit ? t(type === 'day' ? 'aDay' : 'aCycle', { amount: money(limit) }) : t('noLimit'))
+  // A chosen type with no amount yet names the type, so the row never says "No limit" while Per cycle is picked.
+  const limitLabel = (type: LimitType, limit: number) =>
+    limit ? t(type === 'day' ? 'aDay' : 'aCycle', { amount: money(limit) }) : t(type === 'day' ? 'perDayChoice' : type === 'cycle' ? 'perCycleChoice' : 'noLimit')
 
   function addCategory(name: string) {
     setCategories((cs) => [...cs, { name: name.trim(), limitType: 'none', amount: '' }])
-    setError('')
+    setNeedCategory(false)
   }
 
   function updateOpen(patch: Partial<Chosen>) {
@@ -95,7 +99,11 @@ function Setup() {
   }
 
   async function finish() {
-    if (!categories.length) return setError(t('setupNeedCategory'))
+    if (!categories.length) {
+      setNeedCategory(true)
+      document.querySelector<HTMLElement>('[data-chips=setup-own-category] button, #setup-own-category')?.focus()
+      return
+    }
     const bad = categories.find(badLimit)
     if (bad) {
       setOpen(bad.name)
@@ -129,7 +137,7 @@ function Setup() {
         {/* The name is the same Latin word in every language. */}
         <p className="text-[17px] font-semibold">Pao</p>
         <div className="flex items-center gap-2">
-          <ThemeSwitch t={t} className="w-[7.5rem]" />
+          <ThemeSwitch t={t} className="w-[8.75rem]" />
           <button
             type="button"
             onClick={async () => {
@@ -223,7 +231,9 @@ function Setup() {
                     className="grid gap-3 pb-4"
                     onSubmit={(e) => {
                       e.preventDefault()
-                      closeLimit()
+                      // Focus goes back to the row it closes, not to the top of the page.
+                      const row = e.currentTarget.previousElementSibling as HTMLElement | null
+                      if (closeLimit()) requestAnimationFrame(() => row?.focus())
                     }}
                   >
                     <Segmented
@@ -251,7 +261,7 @@ function Setup() {
                             value={openRow.amount}
                             aria-invalid={!!rowError || undefined}
                             aria-describedby={rowError ? 'setup-limit-error' : undefined}
-                            onChange={(e) => updateOpen({ amount: typedAmount(e.target.value) })}
+                            onChange={(e) => updateOpen({ amount: typedAmount(e.target.value, true) })}
                             style={{ paddingLeft: `calc(${symbol.length}ch + 1.375rem)` }}
                             className="font-board font-medium"
                           />
@@ -272,6 +282,7 @@ function Setup() {
                           setCategories((cs) => cs.filter((x) => x.name !== c.name))
                           setOpen(null)
                           setRowError('')
+                          requestAnimationFrame(() => document.getElementById('setup-own-category')?.focus())
                         }}
                       >
                         {t('remove')}
@@ -285,6 +296,11 @@ function Setup() {
               </div>
             )
           })}
+          {needCategory && (
+            <p role="alert" className="border-t border-rule pt-3 text-[14px] text-over-text">
+              {t('setupNeedCategory')}
+            </p>
+          )}
           <Suggestions
             hint={t('setupCategoriesHint')}
             names={data.categories}
@@ -371,9 +387,23 @@ function Suggestions({
     <Row className="grid gap-3">
       <p className="text-[13px] text-ink-2">{hint}</p>
       {left.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div data-chips={inputId} className="flex flex-wrap gap-2">
           {left.map((n) => (
-            <button key={n} type="button" onClick={() => onAdd(n)} className={cn(oneTapClass, 'gap-1.5')}>
+            <button
+              key={n}
+              type="button"
+              onClick={(e) => {
+                // The tapped chip leaves; focus moves to the chip taking its place, or the field, not the page top.
+                const list = e.currentTarget.parentElement!
+                const at = [...list.children].indexOf(e.currentTarget)
+                onAdd(n)
+                requestAnimationFrame(() => {
+                  const chips = list.isConnected ? list.querySelectorAll('button') : []
+                  ;(chips[Math.min(at, chips.length - 1)] ?? document.getElementById(inputId))?.focus()
+                })
+              }}
+              className={cn(oneTapClass, 'gap-1.5')}
+            >
               <Plus aria-hidden weight="bold" className="size-3.5" />
               {n}
             </button>

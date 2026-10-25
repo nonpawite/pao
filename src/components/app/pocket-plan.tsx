@@ -171,7 +171,7 @@ export function PocketPlan({ pocket }: { pocket: Shell['pockets'][number] }) {
                     value={editing.amount}
                     aria-invalid={!!error || undefined}
                     aria-describedby={error ? 'cat-amount-error' : undefined}
-                    onChange={(e) => setEditing({ ...editing, amount: typedAmount(e.target.value) })}
+                    onChange={(e) => setEditing({ ...editing, amount: typedAmount(e.target.value, true) })}
                   />
                   {error && (
                     <p id="cat-amount-error" role="alert" className="text-[13px] text-over-text">

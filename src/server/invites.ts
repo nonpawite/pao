@@ -40,10 +40,22 @@ export const createInvite = createServerFn({ method: 'POST' })
     throw new Error('Could not make an invite code')
   })
 
-/** Takes back an invite nobody has used yet. */
+/** Takes back an invite nobody has used yet, and returns it so Undo can put it back. */
 export const revokeInvite = createServerFn({ method: 'POST' })
   .validator(z.object({ id: z.uuid() }))
   .handler(async ({ data }) => {
     await requireAdmin()
-    await db.delete(invite).where(and(eq(invite.id, data.id), isNull(invite.usedAt)))
+    const [gone] = await db
+      .delete(invite)
+      .where(and(eq(invite.id, data.id), isNull(invite.usedAt)))
+      .returning({ code: invite.code, name: invite.name, expiresAt: invite.expiresAt })
+    return gone ?? null
+  })
+
+/** Undo for a revoke: the same code, name and expiry come back. */
+export const restoreInvite = createServerFn({ method: 'POST' })
+  .validator(z.object({ code: z.string().regex(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/), name: z.string().max(40).nullable(), expiresAt: z.coerce.date() }))
+  .handler(async ({ data }) => {
+    const u = await requireAdmin()
+    await db.insert(invite).values({ ...data, createdBy: u.id }).onConflictDoNothing()
   })
