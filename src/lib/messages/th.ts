@@ -342,6 +342,11 @@ export const th: Messages = {
   ordinalTwo: '{n}',
   ordinalFew: '{n}',
   ordinalOther: '{n}',
+  // Field checks on sign-in and sign-up, under each field.
+  fieldRequired: 'กรอกช่องนี้',
+  emailInvalid: 'พิมพ์อีเมล เช่น name@example.com',
+  passwordShort: 'ใช้อย่างน้อย 8 ตัวอักษร',
+  inviteShape: 'รหัสเชิญมีหน้าตาแบบ K7QF-M2XP',
   // Members and invites (ADR 0002): the admin's group in Settings, and sign-up by invite.
   everyone: 'สมาชิกของ Pao นี้',
   admin: 'ผู้ดูแล',

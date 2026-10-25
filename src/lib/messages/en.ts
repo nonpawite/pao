@@ -343,6 +343,11 @@ export const en = {
   ordinalTwo: '{n}nd',
   ordinalFew: '{n}rd',
   ordinalOther: '{n}th',
+  // Field checks on sign-in and sign-up, under each field.
+  fieldRequired: 'Fill this in.',
+  emailInvalid: 'Type an email like name@example.com.',
+  passwordShort: 'Use at least 8 characters.',
+  inviteShape: 'An invite code looks like K7QF-M2XP.',
   // Members and invites (ADR 0002): the admin's group in Settings, and sign-up by invite.
   everyone: 'Members of this Pao',
   admin: 'Admin',

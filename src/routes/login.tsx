@@ -1,7 +1,7 @@
 import { Link, createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 
-import { Welcome, useWelcome, welcomeSearch } from '#/components/app/welcome'
+import { Welcome, emailShape, useFieldErrors, useWelcome, welcomeSearch } from '#/components/app/welcome'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
@@ -23,6 +23,7 @@ function Login() {
   const welcome = useWelcome(Route.useSearch().lang, data)
   const { t, locale } = welcome
   const [error, setError] = useState('')
+  const { check, field, message } = useFieldErrors()
   const [busy, setBusy] = useState(false)
   // Until the page is live, Sign in would post the form natively and reload; wait for hydration instead.
   const [live, setLive] = useState(false)
@@ -42,19 +43,26 @@ function Login() {
       {/* method=post: if scripts fail to load, credentials must never land in the URL. */}
       <form
         method="post"
+        noValidate
         className="grid gap-4"
         onSubmit={(e) => {
           e.preventDefault()
-          void submit(new FormData(e.currentTarget))
+          const ok = check(e.currentTarget, {
+            email: (v) => (!v ? t('fieldRequired') : !emailShape.test(v) ? t('emailInvalid') : null),
+            password: (v) => (!v ? t('fieldRequired') : null),
+          })
+          if (ok) void submit(new FormData(e.currentTarget))
         }}
       >
         <div className="grid gap-1.5">
           <Label htmlFor="email">{t('email')}</Label>
-          <Input id="email" name="email" type="email" required autoComplete="email" />
+          <Input id="email" name="email" type="email" required autoComplete="email" {...field('email')} />
+          {message('email')}
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="password">{t('password')}</Label>
-          <Input id="password" name="password" type="password" required autoComplete="current-password" />
+          <Input id="password" name="password" type="password" required autoComplete="current-password" {...field('password')} />
+          {message('password')}
         </div>
         {error && (
           <p role="alert" className="text-[14px] text-over-text">

@@ -1,11 +1,12 @@
 import { Link, createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 
-import { Welcome, useWelcome, welcomeSearch } from '#/components/app/welcome'
+import { Welcome, emailShape, useFieldErrors, useWelcome, welcomeSearch } from '#/components/app/welcome'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { authClient } from '#/lib/auth-client'
+import { normalizeInviteCode } from '#/lib/invites'
 import { getSessionUser, getWelcome } from '#/server/shell'
 
 // Its own page, not a mode of sign-in: password managers judge a form once, and one that starts as a login
@@ -29,6 +30,7 @@ function Signup() {
   // While sign-up is by invite the code is required; an invite link brings one either way.
   const askCode = data.signup === 'invite' || !!search.invite
   const [error, setError] = useState('')
+  const { check, field, message } = useFieldErrors()
   const [busy, setBusy] = useState(false)
   // Until the page is live, the form would post natively and reload; wait for hydration instead.
   const [live, setLive] = useState(false)
@@ -59,10 +61,19 @@ function Signup() {
       {/* method=post: if scripts fail to load, credentials must never land in the URL. */}
       <form
         method="post"
+        noValidate
         className="grid gap-4"
         onSubmit={(e) => {
           e.preventDefault()
-          void submit(new FormData(e.currentTarget))
+          const ok = check(e.currentTarget, {
+            ...(askCode && {
+              invite: (v: string) => (!v ? (data.signup === 'invite' ? t('fieldRequired') : null) : !normalizeInviteCode(v) ? t('inviteShape') : null),
+            }),
+            name: (v) => (!v ? t('fieldRequired') : null),
+            email: (v) => (!v ? t('fieldRequired') : !emailShape.test(v) ? t('emailInvalid') : null),
+            password: (v) => (!v ? t('fieldRequired') : v.length < 8 ? t('passwordShort') : null),
+          })
+          if (ok) void submit(new FormData(e.currentTarget))
         }}
       >
         {askCode && (
@@ -77,9 +88,10 @@ function Signup() {
               autoCapitalize="characters"
               spellCheck={false}
               maxLength={20}
-              aria-describedby={search.invite ? undefined : 'invite-hint'}
+              {...field('invite', !search.invite && 'invite-hint')}
               className="font-board font-medium tracking-wider uppercase"
             />
+            {message('invite')}
             {!search.invite && (
               <p id="invite-hint" className="text-[13px] text-ink-2">
                 {t('inviteOnlyHint')}
@@ -89,15 +101,18 @@ function Signup() {
         )}
         <div className="grid gap-1.5">
           <Label htmlFor="name">{t('yourName')}</Label>
-          <Input id="name" name="name" required autoComplete="name" maxLength={40} defaultValue={data.invite?.name ?? ''} />
+          <Input id="name" name="name" required autoComplete="name" maxLength={40} defaultValue={data.invite?.name ?? ''} {...field('name')} />
+          {message('name')}
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="email">{t('email')}</Label>
-          <Input id="email" name="email" type="email" required autoComplete="email" />
+          <Input id="email" name="email" type="email" required autoComplete="email" {...field('email')} />
+          {message('email')}
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="new-password">{t('password')}</Label>
-          <Input id="new-password" name="password" type="password" required minLength={8} autoComplete="new-password" />
+          <Input id="new-password" name="password" type="password" required minLength={8} autoComplete="new-password" {...field('password')} />
+          {message('password')}
         </div>
         {error && (
           <p role="alert" className="text-[14px] text-over-text">

@@ -7,6 +7,9 @@ import { ThemeSwitch } from './theme'
 import { localeCodes, locales, pickLocale } from '#/lib/i18n'
 import type { CalendarNames, Locale } from '#/lib/i18n'
 
+/** Enough of an email's shape to catch a slip (a missing @ or domain); the server has the last word. */
+export const emailShape = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 /** ?lang= carries a language picked on sign-in over to sign-up and back; ?invite= is an invite link's code. */
 export const welcomeSearch = (search: Record<string, unknown>): { lang?: Locale; invite?: string } => ({
   lang: localeCodes.find((l) => l === search.lang),
@@ -63,4 +66,37 @@ export function Welcome({
       {children}
     </main>
   )
+}
+
+/**
+ * Field checks the page does itself, so a problem shows under its field in the member's language rather than as the
+ * browser's own English bubble. `check` returns whether every field passed and focuses the first that didn't.
+ */
+export function useFieldErrors() {
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  function check(form: HTMLFormElement, rules: Record<string, (value: string) => string | null>) {
+    const data = new FormData(form)
+    const found: Record<string, string> = {}
+    for (const [name, rule] of Object.entries(rules)) {
+      const problem = rule(String(data.get(name) ?? '').trim())
+      if (problem) found[name] = problem
+    }
+    setErrors(found)
+    const first = Object.keys(rules).find((name) => found[name])
+    if (first) (form.elements.namedItem(first) as HTMLElement | null)?.focus()
+    return !first
+  }
+  /** A field's error state: the red edge, the message read with it, and the message gone once they type. */
+  const field = (name: string, ...describedBy: Array<string | false | undefined>) => ({
+    'aria-invalid': errors[name] ? true : undefined,
+    'aria-describedby': [errors[name] && `${name}-error`, ...describedBy].filter(Boolean).join(' ') || undefined,
+    onInput: () => setErrors((e) => (e[name] ? { ...e, [name]: '' } : e)),
+  })
+  const message = (name: string) =>
+    errors[name] ? (
+      <p id={`${name}-error`} className="text-[13px] text-over-text">
+        {errors[name]}
+      </p>
+    ) : null
+  return { check, field, message }
 }
