@@ -1,7 +1,7 @@
 import { Link, createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 
-import { Welcome, useWelcomeLocale, welcomeSearch } from '#/components/app/welcome'
+import { Welcome, useWelcome, welcomeSearch } from '#/components/app/welcome'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
@@ -21,8 +21,7 @@ export const Route = createFileRoute('/signup')({
 
 function Signup() {
   const router = useRouter()
-  const data = Route.useLoaderData()
-  const welcome = { ...useWelcomeLocale(Route.useSearch().lang, data.names), today: data.today }
+  const welcome = useWelcome(Route.useSearch().lang, Route.useLoaderData())
   const { t, locale } = welcome
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)

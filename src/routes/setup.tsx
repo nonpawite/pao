@@ -36,6 +36,8 @@ type LimitType = 'day' | 'cycle' | 'none'
 type Chosen = { name: string; limitType: LimitType; amount: string }
 
 const sameName = (a: string, b: string) => a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase()
+// The server's ceiling for a limit, in hundredths.
+const maxLimit = 2_000_000_000
 
 /**
  * A new member builds their personal pocket here, with a preview of their Today board filling in beside it.
@@ -66,7 +68,10 @@ function Setup() {
   useEffect(() => setLive(true), [])
 
   const money = (hundredths: number) => formatMoney(hundredths, currency, tag)
+  const symbol = currencySymbol(currency, tag)
   const limitOf = (c: Chosen) => (c.limitType === 'none' ? 0 : Math.max(0, parseAmount(c.amount, currency) ?? 0))
+  const badLimit = (c: Chosen) => c.limitType !== 'none' && (limitOf(c) <= 0 || limitOf(c) > maxLimit)
+  const limitLabel = (type: LimitType, limit: number) => (limit ? t(type === 'day' ? 'aDay' : 'aCycle', { amount: money(limit) }) : t('noLimit'))
   const currencyNames = new Intl.DisplayNames([tag], { type: 'currency' })
 
   function addCategory(name: string) {
@@ -82,7 +87,7 @@ function Setup() {
   /** Closes the open limit; one whose amount does not read stays open with the reason, and this returns false. */
   function closeLimit() {
     const c = categories.find((x) => x.name === open)
-    if (c && c.limitType !== 'none' && limitOf(c) <= 0) {
+    if (c && badLimit(c)) {
       setRowError(t('badAmount'))
       return false
     }
@@ -93,7 +98,7 @@ function Setup() {
 
   async function finish() {
     if (!categories.length) return setError(t('setupNeedCategory'))
-    const bad = categories.find((c) => c.limitType !== 'none' && limitOf(c) <= 0)
+    const bad = categories.find(badLimit)
     if (bad) {
       setOpen(bad.name)
       return setRowError(t('badAmount'))
@@ -147,6 +152,7 @@ function Setup() {
           categories={categories.map((c) => ({ name: c.name, limitType: c.limitType, limit: limitOf(c) }))}
           accounts={accounts}
           money={money}
+          limitLabel={limitLabel}
           t={t}
         />
       </aside>
@@ -207,7 +213,7 @@ function Setup() {
                   <CategoryGlyph name={c.name} className="-ml-1.5" />
                   <span className="min-w-0 flex-1 truncate text-[16px] font-medium">{c.name}</span>
                   <span className={cn('shrink-0 text-[15px]', limit ? 'font-board font-semibold' : 'text-ink-2')}>
-                    {!limit ? t('noLimit') : t(c.limitType === 'day' ? 'aDay' : 'aCycle', { amount: money(limit) })}
+                    {limitLabel(c.limitType, limit)}
                   </span>
                   <CaretDown aria-hidden weight="bold" className={cn('size-3.5 shrink-0 text-ink-3 transition-transform', isOpen && 'rotate-180')} />
                 </button>
@@ -225,25 +231,31 @@ function Setup() {
                       value={openRow.limitType}
                       onChange={(v) => updateOpen({ limitType: v })}
                       options={[
-                        { value: 'day', label: t('perDay') },
-                        { value: 'cycle', label: t('perCycle') },
+                        { value: 'day', label: t('perDayChoice') },
+                        { value: 'cycle', label: t('perCycleChoice') },
                         { value: 'none', label: t('noLimit') },
                       ]}
                     />
                     {openRow.limitType !== 'none' && (
                       <div className="grid gap-1.5">
                         <Label htmlFor="setup-limit-amount">{t('limitAmount')}</Label>
-                        <Input
-                          id="setup-limit-amount"
-                          inputMode="decimal"
-                          autoFocus
-                          placeholder={currencySymbol(currency, tag)}
-                          value={openRow.amount}
-                          aria-invalid={!!rowError || undefined}
-                          aria-describedby={rowError ? 'setup-limit-error' : undefined}
-                          onChange={(e) => updateOpen({ amount: e.target.value.replace(/[^\d.]/g, '') })}
-                          className="font-board font-medium"
-                        />
+                        {/* The currency stays in the field, so the typed figure reads as money. */}
+                        <div className="relative">
+                          <span aria-hidden className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center font-board text-ink-2">
+                            {symbol}
+                          </span>
+                          <Input
+                            id="setup-limit-amount"
+                            inputMode="decimal"
+                            autoFocus
+                            value={openRow.amount}
+                            aria-invalid={!!rowError || undefined}
+                            aria-describedby={rowError ? 'setup-limit-error' : undefined}
+                            onChange={(e) => updateOpen({ amount: e.target.value.replace(/[^\d.]/g, '') })}
+                            style={{ paddingLeft: `calc(${symbol.length}ch + 1.375rem)` }}
+                            className="font-board font-medium"
+                          />
+                        </div>
                         {rowError && (
                           <p id="setup-limit-error" role="alert" className="text-[13px] text-over-text">
                             {rowError}
@@ -323,7 +335,7 @@ function Setup() {
   )
 }
 
-type T = ReturnType<typeof makeT>['t']
+type Translate = ReturnType<typeof makeT>['t']
 
 /** Suggested names as one-tap chips, then a field for a name of your own. A chosen name leaves the chips. */
 function Suggestions({
@@ -339,7 +351,7 @@ function Suggestions({
   chosen: string[]
   onAdd: (name: string) => void
   inputId: string
-  t: T
+  t: Translate
 }) {
   const [own, setOwn] = useState('')
   const [error, setError] = useState('')
@@ -410,6 +422,7 @@ function Preview({
   categories,
   accounts,
   money,
+  limitLabel,
   t,
 }: {
   title: string
@@ -418,7 +431,8 @@ function Preview({
   categories: Array<{ name: string; limitType: LimitType; limit: number }>
   accounts: string[]
   money: (hundredths: number) => string
-  t: T
+  limitLabel: (type: LimitType, limit: number) => string
+  t: Translate
 }) {
   const first = categories.find((c) => c.limitType === 'day' && c.limit > 0)
   const cycleTotal = categories.reduce((s, c) => s + (c.limitType === 'cycle' ? c.limit : 0), 0)
@@ -439,12 +453,13 @@ function Preview({
         />
       )}
       <div className="mt-3 flex flex-wrap items-end gap-x-4 gap-y-2">
-        <Flap text={money(first?.limit ?? cycleTotal)} dim={!first && !cycleTotal} className="text-[46px] lg:text-[56px]" />
+        <Flap text={money(first?.limit ?? cycleTotal)} dim={!first && !cycleTotal} className={first ? 'text-[46px] lg:text-[64px]' : 'text-[40px] lg:text-[56px]'} />
         <span className="pb-1 text-[15px] leading-tight text-ink-2">
           {first ? t('leftToday') : cycleTotal ? t('leftThisCycle') : t('setupNoLimit')}
         </span>
       </div>
-      {first && <DayStrip days={strip(first.limit)} onBoard className="mt-5" />}
+      {/* Without a per-day limit the strip still draws the cycle, in neutral cells, so a new payday shows. */}
+      <DayStrip days={first ? strip(first.limit) : strip(0).map((s) => (s === 'today' ? s : 'future'))} onBoard className="mt-5" />
 
       <div className="mt-5 grid">
         {categories.length ? (
@@ -453,7 +468,7 @@ function Preview({
               <CategoryGlyph name={c.name} className="-ml-1.5 size-7" />
               <span className="min-w-0 flex-1 truncate">{c.name}</span>
               <span className={cn('shrink-0 text-[14px]', c.limit ? 'font-board font-semibold' : 'text-on-board-2')}>
-                {c.limit ? t(c.limitType === 'day' ? 'aDay' : 'aCycle', { amount: money(c.limit) }) : t('noLimit')}
+                {limitLabel(c.limitType, c.limit)}
               </span>
             </div>
           ))

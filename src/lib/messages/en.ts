@@ -32,6 +32,9 @@ export const en = {
   member: '1 member',
   perDay: 'per day',
   perCycle: 'per cycle',
+  // The same as choices beside No limit, so all three start with a capital.
+  perDayChoice: 'Per day',
+  perCycleChoice: 'Per cycle',
   noLimit: 'No limit',
   aDay: '{amount} a day',
   aCycle: '{amount} a cycle',
@@ -339,7 +342,7 @@ export const en = {
   ordinalFew: '{n}rd',
   ordinalOther: '{n}th',
   // Colour mode, per device.
-  appearance: 'Appearance',
+  appearance: 'Theme',
   themeSystem: 'System',
   themeLight: 'Light',
   themeDark: 'Dark',

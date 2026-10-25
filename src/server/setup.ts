@@ -3,7 +3,7 @@ import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index'
-import { bankAccount, category, pocket, pocketMember } from '#/db/schema'
+import { bankAccount, category, pocket, pocketMember, user } from '#/db/schema'
 import { calendarNames, pickLocale, translate } from '#/lib/i18n'
 import type { MessageKey } from '#/lib/i18n'
 import { defaultCurrency, isCurrency } from '#/lib/money'
@@ -49,7 +49,9 @@ export const finishSetup = createServerFn({ method: 'POST' })
     const locale = pickLocale([(u as { locale?: string }).locale ?? ''])
     if (data.categories.some((c) => c.limitType !== 'none' && c.limitAmount <= 0)) throw new Error('Set a limit above zero')
     await db.transaction(async (tx) => {
-      // A second Finish (a double tap, a stale tab) finds the pocket already there and leaves it alone.
+      // Locking the member's row queues a second Finish (a double tap, another tab) behind this one, so it finds
+      // the pocket already there and leaves it alone.
+      await tx.select({ id: user.id }).from(user).where(eq(user.id, u.id)).for('update')
       const [own] = await tx
         .select({ id: pocket.id })
         .from(pocket)

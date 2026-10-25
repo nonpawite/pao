@@ -166,7 +166,8 @@ export function Segmented<T extends string>({
           onClick={() => onChange(o.value)}
           className={cn(
             'h-10 min-w-0 flex-1 truncate rounded-[5px] px-3 text-[13px] leading-10 text-ink-2 transition-colors hover:text-ink lg:h-8 lg:leading-8',
-            o.value === value && 'bg-board font-medium text-ink shadow-[0_1px_2px_rgb(0_0_0/0.08)]',
+            // In dark a white panel is darker than the plate track, so the thumb steps up a tone to stay raised.
+            o.value === value && 'bg-board font-medium text-ink shadow-[0_1px_2px_rgb(0_0_0/0.08)] dark:bg-rule-strong',
           )}
         >
           {o.label}

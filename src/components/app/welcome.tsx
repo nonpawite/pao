@@ -10,8 +10,8 @@ import type { CalendarNames, Locale } from '#/lib/i18n'
 /** ?lang= carries a language picked on sign-in over to sign-up and back. */
 export const welcomeSearch = (search: Record<string, unknown>): { lang?: Locale } => ({ lang: localeCodes.find((l) => l === search.lang) })
 
-/** The page's language: the one passed along, else the browser's. */
-export function useWelcomeLocale(lang: Locale | undefined, names: Record<Locale, CalendarNames>) {
+/** The page's language (the one passed along, else the browser's), with the welcome board's day. */
+export function useWelcome(lang: Locale | undefined, { names, today }: { names: Record<Locale, CalendarNames>; today: string }) {
   const [locale, setLocale] = useState<Locale>(lang ?? 'en')
   // Without ?lang= the server render stays English, so the browser's language waits for the client.
   useEffect(() => {
@@ -20,7 +20,7 @@ export function useWelcomeLocale(lang: Locale | undefined, names: Record<Locale,
   useEffect(() => {
     document.documentElement.lang = locale
   }, [locale])
-  return { ...makeT(locale, names[locale]), setLocale }
+  return { ...makeT(locale, names[locale]), setLocale, today }
 }
 
 /** Sign-in and sign-up share a frame: the name, the language and colour switches, and the board as the welcome. */
@@ -29,7 +29,7 @@ export function Welcome({
   title,
   children,
 }: {
-  welcome: ReturnType<typeof useWelcomeLocale> & { today: string }
+  welcome: ReturnType<typeof useWelcome>
   title: string
   children: ReactNode
 }) {

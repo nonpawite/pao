@@ -106,7 +106,7 @@ function Settings() {
             className="w-44"
           />
         </Row>
-        {/* Three choices outgrow a phone row beside the label, so the control takes its own line there. */}
+        {/* Wraps only when a long label leaves no room for the three choices. */}
         <Row className="flex flex-wrap items-center justify-between gap-3">
           <span className="flex items-center gap-3">
             <CircleHalf aria-hidden className="size-5 text-ink-2" />
@@ -117,7 +117,7 @@ function Settings() {
             value={theme}
             onChange={setTheme}
             options={themes.map((value) => ({ value, label: t(themeNames[value]) }))}
-            className="w-full sm:w-60"
+            className="w-60"
           />
         </Row>
       </Group>

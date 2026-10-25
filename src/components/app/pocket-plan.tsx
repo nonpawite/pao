@@ -152,8 +152,8 @@ export function PocketPlan({ pocket }: { pocket: Shell['pockets'][number] }) {
                   value={editing.limitType}
                   onChange={(v) => setEditing({ ...editing, limitType: v })}
                   options={[
-                    { value: 'day', label: t('perDay') },
-                    { value: 'cycle', label: t('perCycle') },
+                    { value: 'day', label: t('perDayChoice') },
+                    { value: 'cycle', label: t('perCycleChoice') },
                     { value: 'none', label: t('noLimit') },
                   ]}
                 />

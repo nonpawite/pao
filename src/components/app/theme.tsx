@@ -5,7 +5,7 @@ import { getCookie } from '@tanstack/react-start/server'
 import { useSyncExternalStore } from 'react'
 
 import type { MessageKey } from '#/lib/i18n'
-import { parseTheme, themeColor } from '#/lib/theme'
+import { parseTheme, themeColor, themes } from '#/lib/theme'
 import type { Theme } from '#/lib/theme'
 import { Segmented } from './kit'
 
@@ -49,7 +49,7 @@ export function ThemeSwitch({ t, className }: { t: (key: MessageKey) => string; 
       value={theme}
       onChange={setTheme}
       className={className}
-      options={(['system', 'light', 'dark'] as const).map((value) => {
+      options={themes.map((value) => {
         const Icon = icons[value]
         return {
           value,

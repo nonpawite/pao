@@ -33,6 +33,9 @@ export const th: Messages = {
   member: 'สมาชิก 1 คน',
   perDay: 'ต่อวัน',
   perCycle: 'ต่อรอบ',
+  // As choices beside No limit (sentence case in English).
+  perDayChoice: 'ต่อวัน',
+  perCycleChoice: 'ต่อรอบ',
   noLimit: 'ไม่จำกัด',
   aDay: 'วันละ {amount}',
   aCycle: 'รอบละ {amount}',
