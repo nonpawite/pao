@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { calendarNames, formatDay, formatMonth, localeCodes, locales, ordinal, pickLocale, translate, wordPattern } from './i18n.ts'
+import { calendarNames, formatDay, formatMonth, initials, localeCodes, locales, ordinal, pickLocale, translate, wordPattern } from './i18n.ts'
 import type { CalendarNames, MessageKey } from './i18n.ts'
 
 test('signup takes the first browser language the registry has', () => {
@@ -73,4 +73,16 @@ test('word lists match a name in any shipped language', () => {
   for (const key of Object.keys(locales.en.messages).filter((k) => k.startsWith('glyph')) as MessageKey[]) {
     assert.ok(!wordPattern(key).test('-'), key)
   }
+})
+
+test('a pocket card takes the first letter of the first two words', () => {
+  assert.equal(initials('Me'), 'M')
+  assert.equal(initials('Chiang Mai trip'), 'CM')
+  assert.equal(initials('  household  '), 'H')
+  assert.equal(initials(''), '')
+})
+
+test('a Thai initial is the first letter past a leading vowel, with the marks it carries', () => {
+  assert.equal(initials('ส่วนตัว'), 'ส่')
+  assert.equal(initials('เที่ยว เชียงใหม่'), 'ที่ชี')
 })

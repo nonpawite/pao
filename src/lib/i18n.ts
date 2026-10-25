@@ -31,6 +31,18 @@ export function translate(locale: Locale, key: MessageKey, vars?: Record<string,
 export const wordPattern = (key: MessageKey) =>
   new RegExp(Object.values(locales).flatMap((l) => l.messages[key].split('|')).filter(Boolean).join('|'), 'i')
 
+const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+
+/** A name's initials, for a pocket card: the first letter of its first two words. A Thai leading vowel (เ แ โ ใ ไ) is
+ * written before its consonant, so the consonant stands for the word, with its marks. */
+export const initials = (name: string) =>
+  name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => (graphemes.segment(word.replace(/^[\u0E40-\u0E44]/, ''))[Symbol.iterator]().next().value?.segment ?? '').toLocaleUpperCase())
+    .join('')
+
 const ordinalKeys: Partial<Record<Intl.LDMLPluralRule, MessageKey>> = { one: 'ordinalOne', two: 'ordinalTwo', few: 'ordinalFew' }
 
 /** Day of month for the cycle start picker: 1st, 2nd, 23rd; Thai uses the number alone. */

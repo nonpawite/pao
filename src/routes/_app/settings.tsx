@@ -18,7 +18,7 @@ import { Label } from '#/components/ui/label'
 import { authClient } from '#/lib/auth-client'
 import { pocketBg, pocketColors } from '#/lib/colors'
 import type { PocketColor } from '#/lib/colors'
-import { localeCodes, locales } from '#/lib/i18n'
+import { initials, localeCodes, locales } from '#/lib/i18n'
 import type { MessageKey } from '#/lib/i18n'
 import { themes } from '#/lib/theme'
 import { cn } from '#/lib/utils'
@@ -404,7 +404,7 @@ function Pockets() {
       {/* Room above the first row for a pulled, tilted card. */}
       <div className="grid grid-cols-2 gap-x-3 gap-y-5 pt-5">
         {shell.pockets.map((p) => (
-          <PocketTile key={p.id} color={pocketBg(p.color)} onClick={() => setOpenId(p.id)}>
+          <PocketTile key={p.id} color={pocketBg(p.color)} mark={initials(p.name)} onClick={() => setOpenId(p.id)}>
             <span className="caps truncate text-[17px]">{p.name}</span>
             <span className="caps truncate text-[11px] text-on-board-2">
               {kindLabel(p)}
@@ -463,7 +463,19 @@ function tilt(e: { currentTarget: HTMLElement }) {
   e.currentTarget.style.setProperty('--tilt', `${deg.toFixed(2)}deg`)
 }
 
-function PocketTile({ color, empty, onClick, children }: { color?: string; empty?: boolean; onClick: () => void; children: ReactNode }) {
+function PocketTile({
+  color,
+  mark,
+  empty,
+  onClick,
+  children,
+}: {
+  color?: string
+  mark?: string
+  empty?: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
   return (
     <button type="button" onClick={onClick} onPointerEnter={tilt} onFocus={tilt} className="group relative grid pt-6 text-left">
       <span
@@ -475,7 +487,10 @@ function PocketTile({ color, empty, onClick, children }: { color?: string; empty
           // The empty pocket's card waits inside it, and rises only to show where a new one goes.
           empty ? 'translate-y-6 border-2 border-b-0 border-dashed border-ink' : 'pocket-card',
         )}
-      />
+      >
+        {/* The pocket's initials, printed into the card a shade darker than its colour. */}
+        {mark && <span className="absolute top-2 left-3.5 font-board text-[28px] leading-none font-semibold tracking-[-0.02em] text-black/20">{mark}</span>}
+      </span>
       <span
         className={cn(
           'relative grid min-h-24 gap-0.5 rounded-sm px-4 pb-3.5',
