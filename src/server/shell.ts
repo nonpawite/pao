@@ -13,9 +13,15 @@ import type { CalendarNames, Locale } from '#/lib/i18n'
 import { activePocket, pocketBills, pocketCategories, pocketEntries, requirePocket, requireUser, todayISO } from './session'
 import { getRequestHeaders } from '@tanstack/react-start/server'
 
+/** The signed-in member, and whether Setup has made their personal pocket yet. */
 export const getSessionUser = createServerFn({ method: 'GET' }).handler(async () => {
   const session = await auth.api.getSession({ headers: getRequestHeaders() })
-  return session ? { id: session.user.id, name: session.user.name } : null
+  if (!session) return null
+  const [own] = await db
+    .select({ id: pocket.id })
+    .from(pocket)
+    .where(and(eq(pocket.createdBy, session.user.id), eq(pocket.kind, 'personal')))
+  return { id: session.user.id, name: session.user.name, ready: !!own }
 })
 
 /** Sign-in's welcome board: the household's today, and calendar names for every language its switch can show. */

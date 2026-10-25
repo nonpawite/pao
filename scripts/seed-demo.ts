@@ -1,5 +1,6 @@
 // Synthetic demo data for local development and screenshots. Never run against real household data.
-// Needs two accounts created through the app first: demo@example.com and mint@example.com.
+// Needs two accounts signed up through the app first: demo@example.com and mint@example.com. Setup can be skipped:
+// the script makes any personal pocket that is missing.
 // Run: bun scripts/seed-demo.ts (Bun loads .env itself)
 import { and, eq, inArray } from 'drizzle-orm'
 
@@ -24,13 +25,29 @@ async function userId(email: string) {
 const ploy = await userId('demo@example.com')
 const mint = await userId('mint@example.com')
 
-// Personal pocket: payday on the 25th, the owner's example limits, in baht whatever DEFAULT_CURRENCY says.
-const [me] = await db
-  .select({ id: pocket.id })
-  .from(pocket)
-  .innerJoin(pocketMember, eq(pocketMember.pocketId, pocket.id))
-  .where(and(eq(pocketMember.userId, ploy), eq(pocket.kind, 'personal')))
-await db.update(pocket).set({ cycleStartDay: 25, currency: 'THB' }).where(eq(pocket.id, me.id))
+// Personal pockets, as Setup makes them: payday on the 25th, in baht whatever DEFAULT_CURRENCY says.
+async function personal(id: string) {
+  const [own] = await db
+    .select({ id: pocket.id })
+    .from(pocket)
+    .where(and(eq(pocket.createdBy, id), eq(pocket.kind, 'personal')))
+  if (own) {
+    await db.update(pocket).set({ cycleStartDay: 25, currency: 'THB' }).where(eq(pocket.id, own.id))
+    return own
+  }
+  const [p] = await db
+    .insert(pocket)
+    .values({ name: 'Me', color: 'teal', kind: 'personal', cycleStartDay: 25, currency: 'THB', createdBy: id })
+    .returning({ id: pocket.id })
+  await db.insert(pocketMember).values({ pocketId: p.id, userId: id, role: 'owner' })
+  const names = ['Food', 'Gas', 'Travel', 'Shopping', 'Bills', 'Health', 'Fun']
+  await db.insert(category).values(names.map((name, i) => ({ pocketId: p.id, name, limitType: 'none' as const, sortOrder: i })))
+  await db.insert(bankAccount).values(['Main', 'Saving', 'Investment'].map((name, i) => ({ userId: id, name, sortOrder: i })))
+  return p
+}
+const me = await personal(ploy)
+await personal(mint)
+// The owner's example limits.
 const limits: Record<string, ['day' | 'cycle' | 'none', number]> = {
   Food: ['day', 200],
   Gas: ['cycle', 3000],

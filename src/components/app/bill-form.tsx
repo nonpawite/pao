@@ -9,6 +9,7 @@ import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { nextDue } from '#/lib/bills'
 import { ordinal } from '#/lib/i18n'
+import type { Locale, MessageKey } from '#/lib/i18n'
 import { parseAmount } from '#/lib/money'
 import { cn } from '#/lib/utils'
 import { deleteBill, saveBill } from '#/server/bills'
@@ -77,6 +78,11 @@ export const pickerClass = 'h-11 min-w-24 rounded-sm border border-mark bg-board
 /** Days of the month as the pickers show them: 1–30, then the last day, which also covers the 31st. */
 export function useDays() {
   const { t, locale } = useT()
+  return dayChoices(t, locale)
+}
+
+/** Days of the month for a picker, outside the app shell too (Setup). */
+export function dayChoices(t: (key: MessageKey) => string, locale: Locale) {
   return {
     dayOptions: [...Array.from({ length: 30 }, (_, i) => ({ value: i + 1, label: String(i + 1) })), { value: 31, label: t('lastDay'), wide: true }],
     dayName: (d: number) => (d === 31 ? t('lastDay') : ordinal(locale, d)),

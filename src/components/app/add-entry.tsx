@@ -786,7 +786,7 @@ export function AddEntryForm({
 const chipClass =
   'inline-flex h-11 shrink-0 items-center rounded-sm border border-ink/25 px-3 text-[14px] whitespace-nowrap transition-colors hover:bg-plate lg:h-8'
 // Log-again and Due chips save in one tap, so on a phone they get a full thumb-sized target.
-const oneTapClass =
+export const oneTapClass =
   'inline-flex h-11 shrink-0 items-center gap-1 rounded-sm border border-ink/25 px-3 text-[14px] whitespace-nowrap transition-colors hover:bg-plate lg:h-9'
 const chipOn = 'border-ink bg-ink text-ground hover:bg-ink'
 

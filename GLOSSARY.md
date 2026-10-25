@@ -15,3 +15,7 @@ _Avoid_: User (in product copy), customer
 **Pocket**:
 A budget with its own categories, limits, cycle start day and currency. Personal pockets belong to one member; shared pockets are logged into by several.
 _Avoid_: Wallet, budget, account
+
+**Setup**:
+The first-run steps where a new member builds their personal pocket: its currency, cycle start day, categories and limits, plus their bank accounts. A member has no pocket until they finish it.
+_Avoid_: Onboarding, landing page, wizard

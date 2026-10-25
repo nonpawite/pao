@@ -338,7 +338,27 @@ export const en = {
   ordinalTwo: '{n}nd',
   ordinalFew: '{n}rd',
   ordinalOther: '{n}th',
-  // A new member's personal pocket, its starter categories and bank accounts.
+  // Colour mode, per device.
+  appearance: 'Appearance',
+  themeSystem: 'System',
+  themeLight: 'Light',
+  themeDark: 'Dark',
+  // Setup: a new member builds their personal pocket.
+  setupTitle: 'Set up your pocket',
+  setupIntro: 'Pick what to track. Nothing is saved until you finish, and you can change all of it later in Settings.',
+  setupPaydayHint: 'Your cycle starts on this day each month.',
+  categories: 'Categories',
+  setupCategoriesHint: 'Tap to add. Pick at least one.',
+  setupAccountsHint: 'Where your money comes and goes. Optional.',
+  addYourOwn: 'Add your own',
+  chosenCount: '{n} chosen',
+  setupNeedCategory: 'Pick at least one category to finish.',
+  setupDuplicate: '{name} is already on your list.',
+  setupBoardEmpty: 'Your categories show up here.',
+  setupNoLimit: 'Set a limit to see what is left',
+  removeName: 'Remove {name}',
+  finish: 'Finish',
+  // Names Setup suggests for a new member's personal pocket, categories and bank accounts.
   starterPocket: 'Me',
   starterFood: 'Food',
   starterGas: 'Gas',

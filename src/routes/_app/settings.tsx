@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
-import { Bank, CalendarBlank, Check, Plus, SignOut, Translate, X } from '@phosphor-icons/react'
+import { Bank, CalendarBlank, Check, CircleHalf, Plus, SignOut, Translate, X } from '@phosphor-icons/react'
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
@@ -10,6 +10,7 @@ import { useMoney, useShell, useT } from '#/components/app/context'
 import { PocketPlan } from '#/components/app/pocket-plan'
 import { Avatar, Group, PageTitle, Row, Segmented, onRadioKeys, pageMain } from '#/components/app/kit'
 import { Picker } from '#/components/app/picker'
+import { setTheme, themeNames, useTheme } from '#/components/app/theme'
 import { Button } from '#/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/components/ui/dialog'
 import { Input } from '#/components/ui/input'
@@ -20,6 +21,7 @@ import type { PocketColor } from '#/lib/colors'
 import { localeCodes, locales } from '#/lib/i18n'
 import type { MessageKey } from '#/lib/i18n'
 import { currencies } from '#/lib/money'
+import { themes } from '#/lib/theme'
 import { cn } from '#/lib/utils'
 import {
   addBankAccount,
@@ -65,6 +67,7 @@ function Settings() {
   const router = useRouter()
   const run = useRun()
   const { t } = useT()
+  const theme = useTheme()
   const [account, setAccount] = useState('')
 
   return (
@@ -101,6 +104,20 @@ function Settings() {
               { value: '1', label: t('monday') },
             ]}
             className="w-44"
+          />
+        </Row>
+        {/* Three choices outgrow a phone row beside the label, so the control takes its own line there. */}
+        <Row className="flex flex-wrap items-center justify-between gap-3">
+          <span className="flex items-center gap-3">
+            <CircleHalf aria-hidden className="size-5 text-ink-2" />
+            {t('appearance')}
+          </span>
+          <Segmented
+            label={t('appearance')}
+            value={theme}
+            onChange={setTheme}
+            options={themes.map((value) => ({ value, label: t(themeNames[value]) }))}
+            className="w-full sm:w-60"
           />
         </Row>
       </Group>

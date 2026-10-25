@@ -6,12 +6,16 @@ import { pocketBg } from '#/lib/colors'
 import { ShellProvider } from '#/components/app/context'
 import { Sidebar, TabBar } from '#/components/app/frame'
 import { useT } from '#/components/app/context'
+import { useTheme } from '#/components/app/theme'
 import { Toaster } from '#/components/ui/sonner'
 import { getSessionUser, getShell } from '#/server/shell'
 
 export const Route = createFileRoute('/_app')({
   beforeLoad: async () => {
-    if (!(await getSessionUser())) throw redirect({ to: '/login' })
+    const u = await getSessionUser()
+    if (!u) throw redirect({ to: '/login' })
+    // A new member has no pocket until they finish Setup.
+    if (!u.ready) throw redirect({ to: '/setup' })
   },
   loader: () => getShell(),
   component: AppLayout,
@@ -45,6 +49,7 @@ function AppLayout() {
 function Frame() {
   const { open } = useAddEntry()
   const { t } = useT()
+  const theme = useTheme()
   return (
     <>
       <a
@@ -58,7 +63,7 @@ function Frame() {
         <Outlet />
       </div>
       <TabBar onAdd={open} />
-      <Toaster position="top-center" containerAriaLabel={t('notifications')} />
+      <Toaster theme={theme} position="top-center" containerAriaLabel={t('notifications')} />
     </>
   )
 }

@@ -43,7 +43,7 @@ Open http://localhost:3000 and create an account.
 
 ### Demo data
 
-`scripts/seed-demo.ts` fills a development database with synthetic entries, for example for screenshots. Create `demo@example.com` and `mint@example.com` in the app first, then run:
+`scripts/seed-demo.ts` fills a development database with synthetic entries, for example for screenshots. Create `demo@example.com` and `mint@example.com` in the app first (Setup can be left unfinished: the script makes any missing personal pocket), then run:
 
 ```sh
 bun scripts/seed-demo.ts

@@ -59,8 +59,17 @@
   unicode-range: U+0025, U+002B-002E, U+0030-0039, U+2212;
 }
 
-/* The app follows the system appearance. */
-@custom-variant dark (@media (prefers-color-scheme: dark));
+/* The app follows the system appearance unless the member picks Light or Dark, which sets data-theme on the root. */
+@custom-variant dark {
+  &:where([data-theme='dark'], [data-theme='dark'] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme='light']), :root:not([data-theme='light']) *) {
+      @slot;
+    }
+  }
+}
 
 /*
  * Quiet Ledger: white panels on a soft page, hairline rules, words in Anuphan and figures in Geist with tabular digits.
@@ -150,8 +159,8 @@
   --radius: 6px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
+:root {
+  @variant dark {
     color-scheme: dark;
     --ground: #0d0d0e;
     --plate: #1d1d20;

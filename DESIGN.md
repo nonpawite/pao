@@ -214,7 +214,7 @@ The app recedes so the figures read. White panels sit on a soft, barely warm pag
 
 Meaning-colour comes in three fixed vocabularies. State (on pace, ahead, over) is green, amber and red, worn as dots, text and bars. Category identity is a fixed slot colour per category, used on charts and entry-tape dots. The one accent is the active pocket's own colour, set at runtime on the root, and it is used only as a mark: today's cell, the active phone tab's underline, the bills calendar's today badge and payday line, the chart's current point, and text selection. Switch pocket and the accent changes with it.
 
-The signature is the split-flap figure: light plate tiles, one per character, split by a hairline across the middle, that flip in digit by digit when the value changes. It belongs to exactly two places, Today's hero figure and the amount being typed. Motion grammar is "figures flip, nothing else moves," with a short crossfade when the pocket switches. Dark mode follows the system appearance with the same roles.
+The signature is the split-flap figure: light plate tiles, one per character, split by a hairline across the middle, that flip in digit by digit when the value changes. It belongs to exactly two places, Today's hero figure (and its preview on Setup) and the amount being typed. Motion grammar is "figures flip, nothing else moves," with a short crossfade when the pocket switches. Dark mode follows the system appearance with the same roles, unless the member picks Light or Dark.
 
 **Key Characteristics:**
 - Soft page (#FAFAF9), white panels, 1px hairlines, flat at rest.
@@ -222,7 +222,7 @@ The signature is the split-flap figure: light plate tiles, one per character, sp
 - Ink (#111213) for text and every primary action; no coloured buttons.
 - One runtime accent, the active pocket's colour, used only as small marks.
 - State colours as dots, text and thin bars; on-pace bars stay neutral.
-- Split-flap tiles only for Today's hero and the amount being typed.
+- Split-flap tiles only for Today's hero (and its Setup preview) and the amount being typed.
 - Small, even corners: 6px controls, 8px panels, 3px tiles, 2px marks.
 
 ## Colors
@@ -249,7 +249,7 @@ A near-neutral, very slightly warm greyscale carries the whole interface; colour
 - **Neutral Mark** (`mark`): on-pace limit-bar fill.
 - **Series Ink** (`series`, `series-hi`, `chart-muted`): one-series charts draw the bar that matters (the costliest weekday or the hovered one, the cycle under way) in near-ink and the rest a lighter step, so lighter always reads as context; last cycle and other context lines muted.
 
-Dark mode (`prefers-color-scheme: dark`) keeps every role and swaps values: page #0D0D0E, panel #141416, plate #1D1D20, ink #ECECEA, hairline #26272A, brighter state shades. The values live in the sidecar. Dialogs and the phone sheet add a strong-rule edge in dark, where their shadow cannot be seen. In forced colours every chosen chip, thumb, day and tab keeps a 2px system outline, since fills and rings disappear there.
+Dark mode follows the device (`prefers-color-scheme: dark`) unless the member picks Light or Dark, remembered per device and stamped on the root as `data-theme` so the server renders it; it keeps every role and swaps values: page #0D0D0E, panel #141416, plate #1D1D20, ink #ECECEA, hairline #26272A, brighter state shades. The values live in the sidecar. Dialogs and the phone sheet add a strong-rule edge in dark, where their shadow cannot be seen. In forced colours every chosen chip, thumb, day and tab keeps a 2px system outline, since fills and rings disappear there.
 
 ### Named Rules
 **The Accent Is A Mark Rule.** The pocket colour never fills a button, never colours a word or figure, and never sits behind content. It outlines, underlines, edges or dots. Native text selection and the bills calendar's today badge are the places it sits behind text, with ink text on it.
@@ -348,6 +348,11 @@ Plain and ink-led.
 ### Segmented Control
 A plate track (2px inset) with a white thumb in ink at 13px medium, lifted by the thumb shadow; unchosen options are ink-2 and darken on hover. Options are 40px tall on the phone (44px with the track) and 32px on desktop; a strip that scrolls keeps the chosen option in view. It is one Tab stop; arrow keys move and choose, as in any radio group (the pocket colour picker works the same).
 
+The colour mode uses it twice: a System / Light / Dark row in Settings, and on the pages without Settings (sign-in, sign-up, Setup) a compact three-icon version (monitor, sun, moon at 16px, each named for screen readers) beside the language switch or sign out.
+
+### Setup
+A new member's first page. One column of Groups (Pocket, Categories, Accounts) with the ink Finish at the foot, and beside it on desktop (above it on the phone) a live preview of their Today board: the first per-day limit leads in flap tiles as on Today, then the chosen categories with their limits. Suggested names are one-tap outline chips (25% ink border, bold plus); a tapped chip becomes a ruled row, and a category row opens its limit controls in place, one at a time.
+
 ### Status and Limit Bars
 - **Status:** a 6px round dot and a word (On pace, Too fast, Over, No limit) in the label style. "Too fast" replaced "Ahead", which read as good news.
 - **Limit bar:** a 4px bar on a hairline track with a 1px pace tick. On pace fills neutral mark grey; ahead fills amber; over dims the spent part to 40% red and shows the overage as its own solid red segment. Money set aside for bills is hatched after the spent part.
@@ -383,14 +388,14 @@ Phosphor icons. Navigation, pictograms and status icons use the regular weight a
 - **Do** use the active pocket's colour only as a mark: today's cell, the active tab underline, the calendar's today badge and payday line, chart current points.
 - **Do** show state as a dot, a word in the -text shade, or a thin bar; keep on-pace bars neutral grey.
 - **Do** give each category its fixed slot colour by category order on every chart, and draw one-series charts in ink.
-- **Do** keep split-flap tiles for Today's hero figure and the amount being typed, and keep motion to figures flipping and the pocket-switch crossfade.
+- **Do** keep split-flap tiles for Today's hero figure (and its Setup preview) and the amount being typed, and keep motion to figures flipping and the pocket-switch crossfade.
 - **Do** keep corners at 6px for controls, 8px for panels, 3px for flap tiles and 2px for small marks.
 
 ### Don't:
 - **Don't** fill a button, a word or a figure with the pocket accent.
 - **Don't** use uppercase or tracked labels; labels stay sentence case with zero tracking.
 - **Don't** put category pictograms on filled icon tiles; they are bare outline glyphs.
-- **Don't** put flap tiles on any figure other than Today's hero and the amount being typed.
+- **Don't** put flap tiles on any figure other than Today's hero (and its Setup preview) and the amount being typed.
 - **Don't** hardcode a currency sign or split one across tiles; take the sign from the money module and give it one tile.
 - **Don't** cast shadows on resting panels, rows or buttons.
 - **Don't** colour a bar amber or red unless its limit needs attention, and don't use blue for a one-series chart.
