@@ -217,29 +217,33 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
                   ]}
                   className="w-44"
                 />
-                <label htmlFor="bill-day" className="caps text-[11px] text-ink-2">
-                  {t('onThe')}
-                </label>
-                <Picker
-                  id="bill-day"
-                  label={t('onThe')}
-                  value={draft.day}
-                  options={dayOptions}
-                  columns={7}
-                  display={dayName(draft.day)}
-                  onChange={(d) => setDraft({ ...draft, day: d })}
-                  className={pickerClass}
-                />
-                {draft.repeat === 'yearly' && (
+                {/* "on the 25th Oct" is one phrase: narrow pickers keep it beside the choice in the dialog, and on a
+                    phone it wraps whole, so the month never sits alone on a line. */}
+                <div className="flex items-center gap-2">
+                  <label htmlFor="bill-day" className="caps text-[11px] text-ink-2">
+                    {t('onThe')}
+                  </label>
                   <Picker
-                    label={t('month')}
-                    value={draft.month}
-                    options={names.months.map((m, i) => ({ value: i + 1, label: m }))}
-                    columns={4}
-                    onChange={(m) => setDraft({ ...draft, month: m })}
-                    className={pickerClass}
+                    id="bill-day"
+                    label={t('onThe')}
+                    value={draft.day}
+                    options={dayOptions}
+                    columns={7}
+                    display={dayName(draft.day)}
+                    onChange={(d) => setDraft({ ...draft, day: d })}
+                    className={cn(pickerClass, 'min-w-20')}
                   />
-                )}
+                  {draft.repeat === 'yearly' && (
+                    <Picker
+                      label={t('month')}
+                      value={draft.month}
+                      options={names.months.map((m, i) => ({ value: i + 1, label: m }))}
+                      columns={4}
+                      onChange={(m) => setDraft({ ...draft, month: m })}
+                      className={cn(pickerClass, 'min-w-20')}
+                    />
+                  )}
+                </div>
               </div>
               {next && <span className="caps text-[12px] text-ink-2">{t('nextDueOn', { date: day(next) })}</span>}
             </div>

@@ -562,7 +562,8 @@ export function AddEntryForm({
               placeholder={t('note')}
               maxLength={200}
               aria-label={t('note')}
-              className="-my-2 w-full min-w-0 rounded-xs bg-transparent py-2 text-[16px] text-on-board placeholder:text-on-board-2"
+              // Focus shows as an ink line under the text, as if writing on the line, not a box around the board.
+              className="-my-1.5 w-full min-w-0 border-b-2 border-transparent bg-transparent py-1.5 text-[16px] text-on-board outline-none placeholder:text-on-board-2 focus:border-ink"
             />
           </div>
           {keypad ? (
@@ -570,11 +571,12 @@ export function AddEntryForm({
               <Flap text={`${symbol}${amountText || '0'}`} dim={!amountText} className="text-[34px]" />
             </output>
           ) : (
-            // The real field is invisible over the tiles, so the tiles wear its focus ring.
-            <label className="relative flex min-w-24 justify-end rounded-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-4 has-[:focus-visible]:outline-[var(--focus)]">
+            // The real field is invisible over the tiles, so a caret after them shows it has focus, instead of a box.
+            <label className="group relative flex min-w-24 justify-end">
               <span className="sr-only">{t('amount')}</span>
-              <span aria-hidden>
+              <span aria-hidden className="flex items-center gap-1">
                 <Flap text={`${symbol}${amountText || '0'}`} dim={!amountText} className="text-[32px]" />
+                <span className="caret hidden h-8 w-0.5 rounded-full bg-ink group-has-[input:focus]:block" />
               </span>
               {/* The real field lies over the tiles: typing goes to it, the tiles show it. */}
               <input

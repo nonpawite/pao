@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
 import { Bank, CalendarBlank, Check, CircleHalf, Plus, SignOut, Translate, X } from '@phosphor-icons/react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/compone
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { authClient } from '#/lib/auth-client'
-import { pocketBg, pocketColors } from '#/lib/colors'
+import { pocketBg, pocketColors, securityPrint } from '#/lib/colors'
 import type { PocketColor } from '#/lib/colors'
 import { localeCodes, locales } from '#/lib/i18n'
 import type { MessageKey } from '#/lib/i18n'
@@ -401,9 +401,10 @@ function Pockets() {
 
   return (
     <Group title={t('pockets')}>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-4 pt-3">
+      {/* Room above the first row for a pulled, tilted card. */}
+      <div className="grid grid-cols-2 gap-x-3 gap-y-5 pt-5">
         {shell.pockets.map((p) => (
-          <PocketTile key={p.id} color={pocketBg(p.color)} onClick={() => setOpenId(p.id)}>
+          <PocketTile key={p.id} color={pocketBg(p.color)} seed={p.id} onClick={() => setOpenId(p.id)}>
             <span className="caps truncate text-[17px]">{p.name}</span>
             <span className="caps truncate text-[11px] text-on-board-2">
               {kindLabel(p)}
@@ -456,21 +457,49 @@ function useKindLabel() {
  * A black pocket with a card in the pocket's colour tucked into it; the card slides up on hover.
  * `empty` draws the dashed outline that stands for a pocket not made yet.
  */
-function PocketTile({ color, empty, onClick, children }: { color?: string; empty?: boolean; onClick: () => void; children: ReactNode }) {
+// Each pull tilts the card a little, a new way each time, like tugging a real card out of a pocket.
+function tilt(e: { currentTarget: HTMLElement }) {
+  const deg = (1.5 + Math.random() * 1.5) * (Math.random() < 0.5 ? -1 : 1)
+  e.currentTarget.style.setProperty('--tilt', `${deg.toFixed(2)}deg`)
+}
+
+function PocketTile({
+  color,
+  seed,
+  empty,
+  onClick,
+  children,
+}: {
+  color?: string
+  seed?: string
+  empty?: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  const print = useMemo(() => seed && securityPrint(seed), [seed])
   return (
-    <button type="button" onClick={onClick} className="group relative grid pt-4 text-left">
+    <button type="button" onClick={onClick} onPointerEnter={tilt} onFocus={tilt} className="group relative grid pt-4 text-left">
       <span
         aria-hidden
         style={color ? { background: color } : undefined}
         className={cn(
-          'absolute inset-x-3 top-0 h-10 rounded-t-sm transition-transform duration-200 ease-out group-hover:-translate-y-1.5 group-focus-visible:-translate-y-1.5 motion-reduce:transition-none',
-          empty && 'border-2 border-b-0 border-dashed border-ink-3 group-hover:border-ink',
+          'absolute inset-x-3 top-0 h-10 origin-bottom overflow-hidden rounded-t-sm transition-[translate,rotate] duration-200 ease-out group-hover:-translate-y-2.5 group-hover:rotate-(--tilt) group-focus-visible:-translate-y-2.5 group-focus-visible:rotate-(--tilt) motion-reduce:rotate-none! motion-reduce:transition-none',
+          // The empty pocket's card waits inside it, and rises only to show where a new one goes.
+          empty && 'translate-y-4 border-2 border-b-0 border-dashed border-ink',
         )}
-      />
+      >
+        {print && (
+          <svg viewBox="0 0 240 40" preserveAspectRatio="none" className="absolute inset-0 size-full">
+            <path d={print} fill="none" stroke="rgb(0 0 0 / 0.2)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+          </svg>
+        )}
+      </span>
       <span
         className={cn(
-          'relative grid min-h-24 content-end gap-0.5 rounded-sm px-4 pt-6 pb-3.5',
-          empty ? 'place-items-center border-2 border-dashed border-ink-3 bg-ground text-ink-2 group-hover:border-ink group-hover:text-ink' : 'board',
+          'relative grid min-h-24 gap-0.5 rounded-sm px-4 pb-3.5',
+          empty
+            ? 'content-center justify-items-center pt-3.5 border-2 border-dashed border-ink-3 bg-ground text-ink-2 transition-colors group-hover:border-ink group-hover:text-ink group-focus-visible:border-ink group-focus-visible:text-ink'
+            : 'board content-end pt-6',
         )}
       >
         {/* The pocket's mouth, stitched. */}

@@ -432,6 +432,16 @@
   }
 }
 
+/* A typing caret: the amount field is invisible over its tiles, so this shows where the typing goes. */
+.caret {
+  animation: caret-blink 1.06s steps(1) infinite;
+}
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
 /* Switching pocket crossfades the page while the figures flip. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
@@ -450,7 +460,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .flap {
+  .flap,
+  .caret {
     animation: none;
   }
   /* Dialogs, popovers and recap cards appear without zooming or sliding. */
