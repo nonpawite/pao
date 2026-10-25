@@ -378,6 +378,7 @@ export const th: Messages = {
   inviteReady: 'คำเชิญ {code} พร้อมแล้ว',
   copyLink: 'คัดลอกลิงก์',
   linkCopied: 'คัดลอกลิงก์แล้ว',
+  copyFailed: 'คัดลอกลิงก์ไม่ได้ รหัสคือ {code}',
   revokeInvite: 'ยกเลิกคำเชิญของ {name}',
   invitesHint: 'คำเชิญแต่ละอันใช้ได้ครั้งเดียว ภายใน 7 วัน ส่งลิงก์ หรือบอกรหัสก็ได้',
   inviteCode: 'รหัสเชิญ',

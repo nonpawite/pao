@@ -379,6 +379,7 @@ export const en = {
   inviteReady: 'Invite {code} is ready.',
   copyLink: 'Copy link',
   linkCopied: 'Link copied',
+  copyFailed: 'Could not copy the link. The code is {code}.',
   revokeInvite: 'Revoke invite for {name}',
   invitesHint: 'Each invite works once, for 7 days. Send the link, or read out the code.',
   inviteCode: 'Invite code',

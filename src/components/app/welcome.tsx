@@ -49,7 +49,7 @@ export function Welcome({
         {/* The name is the same Latin word in every language. */}
         <p className="text-[17px] font-semibold">Pao</p>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setLocale(other)} className="caps -my-3 h-11 px-2 text-[13px] underline decoration-2 underline-offset-4">
+          <button type="button" onClick={() => setLocale(other)} className="caps -my-3 h-11 min-w-11 px-2 text-[13px] underline decoration-2 underline-offset-4">
             <span lang={other}>{locales[other].name}</span>
           </button>
           <ThemeSwitch t={t} className="w-[8.75rem]" />

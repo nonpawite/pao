@@ -188,16 +188,17 @@ function Settings() {
 
 type Field = 'name' | 'email' | 'password'
 
-/** Copies text, also over plain http on a home network, where the browser keeps the clipboard API off. */
+/** Copies text, also over plain http on a home network, where the browser keeps the clipboard API off. Says whether it worked. */
 async function copyText(text: string) {
-  if (window.isSecureContext && navigator.clipboard) return navigator.clipboard.writeText(text)
+  if (window.isSecureContext && navigator.clipboard) return navigator.clipboard.writeText(text).then(() => true, () => false)
   const field = document.createElement('textarea')
   field.value = text
   field.style.cssText = 'position:fixed;opacity:0'
   document.body.append(field)
   field.select()
-  document.execCommand('copy')
+  const copied = document.execCommand('copy')
   field.remove()
+  return copied
 }
 
 /** The admin's list: everyone on the instance, invites still waiting, and a way to make one (ADR 0002). */
@@ -206,8 +207,9 @@ function Members({ data }: { data: NonNullable<Awaited<ReturnType<typeof getMemb
   const { t, day } = useT()
   const [name, setName] = useState('')
   const copy = async (code: string) => {
-    await copyText(`${location.origin}/signup?invite=${code}`)
-    toast.success(t('linkCopied'))
+    if (await copyText(`${location.origin}/signup?invite=${code}`)) toast.success(t('linkCopied'))
+    // The code still works when read out or typed, so the failure hands it over.
+    else toast.error(t('copyFailed', { code }))
   }
 
   return (
@@ -227,11 +229,13 @@ function Members({ data }: { data: NonNullable<Awaited<ReturnType<typeof getMemb
           <Ticket aria-hidden className="size-7 shrink-0 p-1 text-ink-2" />
           <span className="grid min-w-0 flex-1">
             <span className="truncate">{i.name || t('inviteUnnamed')}</span>
-            <span className="truncate text-[13px] text-ink-2">
-              <span className="font-board font-medium text-ink">{i.code}</span> · {t('inviteUntil', { date: day(i.until) })}
+            {/* Wraps rather than cut the date off on a phone, where Copy link and revoke take the width. */}
+            <span className="text-[13px] text-ink-2">
+              <span className="font-board font-medium text-ink">{i.code}</span> ·{' '}
+              <span className="whitespace-nowrap">{t('inviteUntil', { date: day(i.until) })}</span>
             </span>
           </span>
-          <Button variant="ghost" size="sm" onClick={() => void copy(i.code)}>
+          <Button variant="ghost" size="sm" className="h-11 lg:h-9" onClick={() => void copy(i.code)}>
             {t('copyLink')}
           </Button>
           <button
@@ -241,6 +245,7 @@ function Members({ data }: { data: NonNullable<Awaited<ReturnType<typeof getMemb
               const out: { gone?: Awaited<ReturnType<typeof revokeInvite>> } = {}
               if (!(await run(async () => void (out.gone = await revokeInvite({ data: { id: i.id } }))))) return
               const back = out.gone
+              requestAnimationFrame(() => document.getElementById('invite-name')?.focus())
               // Like every removal, a revoke can be undone: the same code comes back.
               toast.success(t('inviteRevoked'), {
                 duration: 10000,
