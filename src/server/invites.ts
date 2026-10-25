@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 import { db } from '#/db/index'
 import { invite, user } from '#/db/schema'
+import { householdDay } from '#/lib/budget'
 import { inviteDays, newInviteCode } from '#/lib/invites'
 import { adminId, requireAdmin, requireUser } from './session'
 
@@ -18,7 +19,8 @@ export const getMembers = createServerFn({ method: 'GET' }).handler(async () => 
     .from(invite)
     .where(and(isNull(invite.usedAt), gt(invite.expiresAt, new Date())))
     .orderBy(desc(invite.createdAt))
-  return { admin, members, pending }
+  // The last day it works, on the household's calendar (APP_TZ), not UTC's.
+  return { admin, members, pending: pending.map(({ expiresAt, ...i }) => ({ ...i, until: householdDay(expiresAt) })) }
 })
 
 export const createInvite = createServerFn({ method: 'POST' })

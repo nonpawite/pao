@@ -15,3 +15,5 @@ This reverses v1's rule of "no invite links or admin roles". Under v1, adding a 
 
 - The admin is worked out from account age rather than stored as a role, so there is nothing to migrate and an upgraded instance's self-hoster becomes admin without action. Handing the role over, or a second admin, would need a stored role.
 - Invites work for 7 days and once only. The admin sees members and pending invites in Settings and can revoke an invite; there is no removing accounts.
+- A sign-up without a working invite is refused before the email is looked up, so the answer never tells an outsider whether an email already has an account.
+- Accepted: two sign-ups at the same instant on an empty instance can both get in (the older one is the admin), so the self-hoster signs up before sharing the address. An account creation that fails after claiming its invite (two sign-ups racing for one email) uses the invite up; the admin makes another.

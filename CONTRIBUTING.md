@@ -29,6 +29,7 @@ cat > .env <<EOF
 DATABASE_URL=postgresql://tracker:tracker@localhost:5432/tracker
 BETTER_AUTH_URL=http://localhost:3000
 BETTER_AUTH_SECRET=$(openssl rand -base64 32)
+ALLOW_SIGNUP=true
 EOF
 ```
 
@@ -39,7 +40,7 @@ bun run db:migrate
 bun run dev                    # http://localhost:3000
 ```
 
-Open http://localhost:3000 and create an account.
+Open http://localhost:3000 and create an account. The first account is the admin. `ALLOW_SIGNUP=true` lets more accounts sign up without an invite while you develop; leave it out to try sign-up by invite.
 
 ### Demo data
 

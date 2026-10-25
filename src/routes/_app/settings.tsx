@@ -186,7 +186,6 @@ function Settings() {
 
 type Field = 'name' | 'email' | 'password'
 
-/** Name, email and password as ruled rows; EDIT opens one row at a time into its form. */
 /** Copies text, also over plain http on a home network, where the browser keeps the clipboard API off. */
 async function copyText(text: string) {
   if (window.isSecureContext && navigator.clipboard) return navigator.clipboard.writeText(text)
@@ -227,7 +226,7 @@ function Members({ data }: { data: NonNullable<Awaited<ReturnType<typeof getMemb
           <span className="grid min-w-0 flex-1">
             <span className="truncate">{i.name || t('inviteUnnamed')}</span>
             <span className="truncate text-[13px] text-ink-2">
-              <span className="font-board font-medium text-ink">{i.code}</span> · {t('inviteUntil', { date: day(i.expiresAt.toISOString().slice(0, 10)) })}
+              <span className="font-board font-medium text-ink">{i.code}</span> · {t('inviteUntil', { date: day(i.until) })}
             </span>
           </span>
           <Button variant="ghost" size="sm" onClick={() => void copy(i.code)}>
@@ -272,6 +271,7 @@ function Members({ data }: { data: NonNullable<Awaited<ReturnType<typeof getMemb
   )
 }
 
+/** Name, email and password as ruled rows; EDIT opens one row at a time into its form. */
 function Profile() {
   const shell = useShell()
   const router = useRouter()
