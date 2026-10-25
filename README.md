@@ -1,4 +1,4 @@
-# Pao
+# <img src="public/icon.svg" alt="" height="32" align="absmiddle"> Pao
 
 Pao is a self-hosted spending tracker for one household, whether that is a couple, housemates or one person. Members log spending by hand and always see what is left today and this cycle in each category.
 
@@ -10,14 +10,28 @@ Pao is a self-hosted spending tracker for one household, whether that is a coupl
 
 Pao is a limit tracker, not a ledger: no bank sync, no imports, no balances. It is free under the MIT license, and support is best-effort (see [Support](#support)).
 
+[Install](#install) · [Settings](#settings) · [Upgrade](#upgrade) · [Backups](#backups) · [Support](#support)
+
 <p>
-  <img src="docs/screenshots/phone-light-today.png" alt="Today on a phone, light theme: 50 baht left today for Food, with this cycle's spending and limits below" width="260">
-  <img src="docs/screenshots/phone-dark-today-jpy.png" alt="Today on a phone, dark theme, in the Tokyo trip pocket: 72,600 yen left this cycle" width="260">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/phone-dark-today.png">
+    <img src="docs/screenshots/phone-light-today.png" alt="Today on a phone: 50 baht left today for Food, with this cycle's spending and limits below" width="180">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/desktop-dark-today.png">
+    <img src="docs/screenshots/desktop-light-today.png" alt="Today on a desktop: Food left today, this cycle's spending, limits per category and recent entries" width="624">
+  </picture>
 </p>
-<img src="docs/screenshots/desktop-light-today.png" alt="Today on a desktop, light theme: Food left today, this cycle's spending, limits per category and recent entries">
+
+<details>
+<summary>More screenshots</summary>
+
+<img src="docs/screenshots/phone-dark-today-jpy.png" alt="Today on a phone, dark theme, in the Tokyo trip pocket: 72,600 yen left this cycle" width="260">
 <img src="docs/screenshots/desktop-dark-review-jpy.png" alt="Review on a desktop, dark theme, in the Tokyo trip pocket: yen spent this cycle by category, and this cycle against the plan">
 
-<sub>Screenshots use the synthetic demo data from <code>scripts/seed-demo.ts</code>.</sub>
+</details>
+
+<sub>Screenshots use the synthetic demo data from <code>scripts/seed-demo.ts</code>. They follow your GitHub theme.</sub>
 
 ## Install
 
@@ -77,13 +91,18 @@ The `db` service also publishes Postgres on the server's `127.0.0.1:5432`, for d
 
 ### Database password
 
-The database password is fixed (`tracker`). That is safe only because Postgres is reachable just from the app's container and from `127.0.0.1` on the server, never from other machines. If other people can log in to the server, change it:
+The database password is fixed (`tracker`). That is safe only because Postgres is reachable just from the app's container and from `127.0.0.1` on the server, never from other machines. If other people can log in to the server, change it.
+
+<details>
+<summary>Change the database password</summary>
 
 ```sh
 docker compose exec db psql -U tracker -c "ALTER USER tracker PASSWORD 'new-password'"
 ```
 
 Then put the same password in `POSTGRES_PASSWORD` and in `DATABASE_URL` in `docker-compose.yml`, and run `docker compose up -d`. Editing `POSTGRES_PASSWORD` alone does nothing to an existing database.
+
+</details>
 
 ### HTTPS and access away from home
 
@@ -135,7 +154,12 @@ Keep copies somewhere other than the server. The `app-data` volume holds the aut
 
 ### Restore
 
-Restoring replaces everything in the database with the backup. On a new server, do steps 1 to 4 of [Install](#install) first. Then, in the Pao folder, with `pao-backup.sql` in it:
+Restoring replaces everything in the database with the backup.
+
+<details>
+<summary>Restore from a backup</summary>
+
+On a new server, do steps 1 to 4 of [Install](#install) first. Then, in the Pao folder, with `pao-backup.sql` in it:
 
 ```sh
 docker compose stop app
@@ -144,6 +168,8 @@ docker compose exec db createdb -U tracker tracker
 docker compose exec -T db psql -U tracker -d tracker -q -v ON_ERROR_STOP=1 < pao-backup.sql
 docker compose start app
 ```
+
+</details>
 
 ## Support
 
