@@ -6,7 +6,7 @@ import { db } from '#/db/index'
 import { bankAccount, category, pocket, pocketMember, user } from '#/db/schema'
 import { calendarNames, pickLocale, translate } from '#/lib/i18n'
 import type { MessageKey } from '#/lib/i18n'
-import { defaultCurrency, isCurrency } from '#/lib/money'
+import { defaultCurrency, isCurrency, maxAmount } from '#/lib/money'
 import { requireUser, todayISO } from './session'
 
 const starterCategories: MessageKey[] = ['starterFood', 'starterGas', 'starterTravel', 'starterShopping', 'starterBills', 'starterHealth', 'starterFun']
@@ -38,7 +38,7 @@ export const finishSetup = createServerFn({ method: 'POST' })
       currency: z.string().refine(isCurrency, 'Not an ISO 4217 currency code'),
       cycleStartDay: z.number().int().min(1).max(31),
       categories: z
-        .array(z.object({ name, limitType: z.enum(['day', 'cycle', 'none']), limitAmount: z.number().int().min(0).max(2_000_000_000) }))
+        .array(z.object({ name, limitType: z.enum(['day', 'cycle', 'none']), limitAmount: z.number().int().min(0).max(maxAmount) }))
         .min(1)
         .max(50),
       accounts: z.array(name).max(20),

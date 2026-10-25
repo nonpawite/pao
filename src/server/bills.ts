@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { db } from '#/db/index'
 import { bankAccount, bill, category, entry } from '#/db/schema'
 import { cycleFor, daysInMonth, iso } from '#/lib/budget'
+import { maxAmount } from '#/lib/money'
 import { activePocket, pocketBills, requireOwner, requirePocket, requireUser, todayISO } from './session'
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -42,7 +43,7 @@ const billInput = z
     id: z.uuid().nullable(),
     name: z.string().trim().min(1).max(40),
     // Hundredths; null when it varies.
-    amount: z.number().int().positive().max(2_000_000_000).nullable(),
+    amount: z.number().int().positive().max(maxAmount).nullable(),
     categoryId: z.uuid(),
     bankAccountId: z.uuid().nullable(),
     repeat: z.enum(['monthly', 'yearly']),

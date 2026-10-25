@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/compone
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { addDays, cycleFor } from '#/lib/budget'
-import { parseAmount } from '#/lib/money'
+import { parseAmount, typedAmount } from '#/lib/money'
 import { cn } from '#/lib/utils'
 import { archiveCategory, restoreCategory, saveCategory, setCycleStartDay } from '#/server/limits'
 import type { Shell } from '#/server/shell'
@@ -169,7 +169,7 @@ export function PocketPlan({ pocket }: { pocket: Shell['pockets'][number] }) {
                     value={editing.amount}
                     aria-invalid={!!error || undefined}
                     aria-describedby={error ? 'cat-amount-error' : undefined}
-                    onChange={(e) => setEditing({ ...editing, amount: e.target.value.replace(/[^\d.]/g, '') })}
+                    onChange={(e) => setEditing({ ...editing, amount: typedAmount(e.target.value) })}
                   />
                   {error && (
                     <p id="cat-amount-error" role="alert" className="text-[13px] text-over-text">

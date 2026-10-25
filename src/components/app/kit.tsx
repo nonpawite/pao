@@ -25,7 +25,7 @@ import {
   Wallet,
 } from '@phosphor-icons/react'
 import type { Icon } from '@phosphor-icons/react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent, ReactNode } from 'react'
 
 import type { LimitState, StripDay } from '#/lib/budget'
@@ -97,6 +97,21 @@ export function Flap({ text, dim, className }: { text: string; dim?: boolean; cl
     ch,
     k: /^\d$/.test(ch) ? 'char' : /^[,.]$/.test(ch) ? 'sep' : /^\s$/.test(ch) ? 'gap' : 'sym',
   }))
+  // The stagger counts from the first tile that changed, so a typed digit flips at once instead of waiting its place.
+  const prev = useRef<typeof tiles>([])
+  const first = Math.max(0, tiles.findIndex((t, i) => t.ch !== prev.current[i]?.ch))
+  // Tiles cut from the end (a deleted digit) flip away instead of vanishing.
+  const [leaving, setLeaving] = useState<Array<(typeof tiles)[number] & { id: number }>>([])
+  const nextId = useRef(0)
+  useLayoutEffect(() => {
+    const before = prev.current
+    prev.current = tiles
+    if (tiles.length >= before.length) return setLeaving((ls) => (ls.length ? [] : ls))
+    const gone = before.slice(tiles.length).map((t) => ({ ...t, id: nextId.current++ }))
+    setLeaving((ls) => [...ls, ...gone])
+    // Each deletion's tiles leave on their own timer, so quick deletes don't strand one another.
+    setTimeout(() => setLeaving((ls) => ls.filter((l) => !gone.includes(l))), 200)
+  }, [text])
   // The figure's width in em (tile widths from styles.css, plus the gap), so .flaps can shrink it to fit its container.
   // shortcut: copies styles.css's tile widths and guesses a sign's width from its letter count, so a figure can clip
   // if either drifts; measure the rendered tiles once a sign or a styles.css change clips one.
@@ -107,7 +122,12 @@ export function Flap({ text, dim, className }: { text: string; dim?: boolean; cl
       <span aria-hidden className="flaps" data-dim={dim || undefined} style={{ '--w': width.toFixed(2) } as CSSProperties}>
         {tiles.map(({ ch, k }, i) => (
           // Keyed by character so a changed character remounts and flips.
-          <span key={`${i}-${ch}`} className="flap" data-k={k} style={{ '--i': i } as CSSProperties}>
+          <span key={`${i}-${ch}`} className="flap" data-k={k} style={{ '--i': Math.max(0, i - first) } as CSSProperties}>
+            <span>{ch}</span>
+          </span>
+        ))}
+        {leaving.map(({ ch, k, id }) => (
+          <span key={`out-${id}`} className="flap" data-k={k} data-out>
             <span>{ch}</span>
           </span>
         ))}

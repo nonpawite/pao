@@ -8,7 +8,7 @@ import { Button } from '#/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/components/ui/dialog'
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from '#/components/ui/drawer'
 import { addDays } from '#/lib/budget'
-import { parseAmount } from '#/lib/money'
+import { parseAmount, typedAmount } from '#/lib/money'
 import { cn } from '#/lib/utils'
 import { addEntry, deleteEntry, getDayEntries, updateEntry } from '#/server/entries'
 import type { DayEntry } from '#/server/entries'
@@ -351,7 +351,7 @@ export function AddEntryForm({
   }
 
   const press = (k: (typeof keys)[number]) =>
-    setAmountText((s) => (k === 'del' ? s.slice(0, -1) : k === '.' && s.includes('.') ? s : (s + k).slice(0, 12)))
+    setAmountText((s) => (k === 'del' ? s.slice(0, -1) : typedAmount(s + k, true)))
 
   // Arrows move through categories like a radio group; Enter adds the focused one.
   function onCategoryKey(e: KeyboardEvent<HTMLDivElement>) {
@@ -585,8 +585,8 @@ export function AddEntryForm({
                 autoComplete="off"
                 maxLength={12}
                 value={amountText}
-                // Digits, a decimal point and + for sums (120+45); anything else never reaches the tiles.
-                onChange={(e) => setAmountText(e.target.value.replace(/[^\d.+]/g, ''))}
+                // Digits, a decimal point and + for sums (120+45), within the cap; anything else never reaches the tiles.
+                onChange={(e) => setAmountText(typedAmount(e.target.value, true))}
                 className="absolute inset-0 cursor-text opacity-0"
               />
             </label>

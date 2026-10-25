@@ -395,6 +395,16 @@
   height: 1px;
   background: var(--board);
 }
+/* A deleted character's tile flips away. */
+.flap[data-out] {
+  animation: flap-out 180ms ease-in forwards;
+}
+@keyframes flap-out {
+  to {
+    transform: rotateX(86deg);
+    opacity: 0;
+  }
+}
 /* A sign's tile is as narrow as $ and grows with its letters (CHF, US$). */
 .flap[data-k='sym'] {
   width: auto;
@@ -478,6 +488,9 @@
 @media (prefers-reduced-motion: reduce) {
   .flap {
     animation: none;
+  }
+  .flap[data-out] {
+    display: none;
   }
   .pocket-card::after {
     transition: none;

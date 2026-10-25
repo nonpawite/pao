@@ -61,6 +61,24 @@ function isLetterSymbol(s: string) {
   return letterSymbols.has(s.toUpperCase())
 }
 
+/** The largest amount Pao stores, in hundredths (20,000,000): the database column is a 32-bit integer. */
+export const maxAmount = 2_000_000_000
+
+/**
+ * What an amount field keeps of what is typed: digits and one decimal point, at most 7 digits before it and 2 after,
+ * so a typed amount stays under maxAmount. `sums` keeps + for "120+45", each term capped the same way.
+ */
+export function typedAmount(input: string, sums = false) {
+  return input
+    .replace(sums ? /[^\d.+]/g : /[^\d.]/g, '')
+    .split('+')
+    .map((term) => {
+      const [whole, ...rest] = term.split('.')
+      return rest.length ? `${whole.slice(0, 7)}.${rest.join('').slice(0, 2)}` : whole.slice(0, 7)
+    })
+    .join('+')
+}
+
 /** Parse a typed amount in `currency`, allowing simple sums like "120+45+30". Returns hundredths, or null if invalid. */
 export function parseAmount(input: string, currency: string): number | null {
   // Symbols ($, ฿) may go anywhere; letters only as a currency code or code-style symbol at either end.
@@ -72,7 +90,7 @@ export function parseAmount(input: string, currency: string): number | null {
   // Rounded to what the currency shows (¥12.5 is ¥13), so the stored amount is the shown one.
   const step = 10 ** (2 - shownDigits(currency))
   const hundredths = Math.round(clean.split('+').reduce((sum, p) => sum + Math.round(Number(p) * 100), 0) / step) * step
-  return hundredths > 0 ? hundredths : null
+  return hundredths > 0 && hundredths <= maxAmount ? hundredths : null
 }
 
 export type CurrencyTotal = { currency: string; total: number }

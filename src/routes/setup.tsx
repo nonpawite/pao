@@ -16,7 +16,7 @@ import { authClient } from '#/lib/auth-client'
 import { cycleFor, dayStrip } from '#/lib/budget'
 import type { StripDay } from '#/lib/budget'
 import { locales } from '#/lib/i18n'
-import { currencySymbol, formatMoney, parseAmount } from '#/lib/money'
+import { currencySymbol, formatMoney, parseAmount, typedAmount } from '#/lib/money'
 import { cn } from '#/lib/utils'
 import { finishSetup, getSetup } from '#/server/setup'
 import { getSessionUser } from '#/server/shell'
@@ -36,8 +36,6 @@ type LimitType = 'day' | 'cycle' | 'none'
 type Chosen = { name: string; limitType: LimitType; amount: string }
 
 const sameName = (a: string, b: string) => a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase()
-// The server's ceiling for a limit, in hundredths.
-const maxLimit = 2_000_000_000
 
 /**
  * A new member builds their personal pocket here, with a preview of their Today board filling in beside it.
@@ -70,7 +68,7 @@ function Setup() {
   const money = (hundredths: number) => formatMoney(hundredths, currency, tag)
   const symbol = currencySymbol(currency, tag)
   const limitOf = (c: Chosen) => (c.limitType === 'none' ? 0 : Math.max(0, parseAmount(c.amount, currency) ?? 0))
-  const badLimit = (c: Chosen) => c.limitType !== 'none' && (limitOf(c) <= 0 || limitOf(c) > maxLimit)
+  const badLimit = (c: Chosen) => c.limitType !== 'none' && limitOf(c) <= 0
   const limitLabel = (type: LimitType, limit: number) => (limit ? t(type === 'day' ? 'aDay' : 'aCycle', { amount: money(limit) }) : t('noLimit'))
 
   function addCategory(name: string) {
@@ -251,7 +249,7 @@ function Setup() {
                             value={openRow.amount}
                             aria-invalid={!!rowError || undefined}
                             aria-describedby={rowError ? 'setup-limit-error' : undefined}
-                            onChange={(e) => updateOpen({ amount: e.target.value.replace(/[^\d.]/g, '') })}
+                            onChange={(e) => updateOpen({ amount: typedAmount(e.target.value) })}
                             style={{ paddingLeft: `calc(${symbol.length}ch + 1.375rem)` }}
                             className="font-board font-medium"
                           />

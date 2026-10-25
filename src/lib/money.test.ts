@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { compactMoney, currencySymbol, defaultCurrency, formatMoney, isCurrency, parseAmount, totalsByCurrency } from './money.ts'
+import { compactMoney, currencySymbol, defaultCurrency, formatMoney, isCurrency, maxAmount, parseAmount, totalsByCurrency, typedAmount } from './money.ts'
 
 test('THB looks the same in English and Thai', () => {
   for (const locale of ['en-GB', 'th-TH']) {
@@ -151,4 +151,24 @@ test('the currency symbol is the one formatted amounts use', () => {
     assert.equal(currencySymbol('JPY', locale), '¥')
     assert.equal(currencySymbol('CHF', locale), 'CHF')
   }
+})
+
+test('an amount field keeps 7 digits before the point and 2 after', () => {
+  assert.equal(typedAmount('12345678'), '1234567')
+  assert.equal(typedAmount('12.345'), '12.34')
+  assert.equal(typedAmount('1.2.3'), '1.23')
+  assert.equal(typedAmount('฿1,200 x'), '1200')
+  assert.equal(typedAmount('.5'), '.5')
+})
+
+test('sums keep + and cap each term', () => {
+  assert.equal(typedAmount('120+45.678', true), '120+45.67')
+  assert.equal(typedAmount('99999999+1', true), '9999999+1')
+  assert.equal(typedAmount('120+45'), '12045')
+})
+
+test('nothing above what Pao can store parses', () => {
+  assert.equal(parseAmount('20000000', 'USD'), maxAmount)
+  assert.equal(parseAmount('20000000.01', 'USD'), null)
+  assert.equal(parseAmount('9999999+9999999+9999999', 'USD'), null)
 })

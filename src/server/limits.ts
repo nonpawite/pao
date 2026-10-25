@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 import { db } from '#/db/index'
 import { category, pocket } from '#/db/schema'
+import { maxAmount } from '#/lib/money'
 import { requireOwner, requireUser } from './session'
 
 export const saveCategory = createServerFn({ method: 'POST' })
@@ -13,7 +14,7 @@ export const saveCategory = createServerFn({ method: 'POST' })
       id: z.uuid().nullable(),
       name: z.string().trim().min(1).max(40),
       limitType: z.enum(['day', 'cycle', 'none']),
-      limitAmount: z.number().int().min(0).max(2_000_000_000),
+      limitAmount: z.number().int().min(0).max(maxAmount),
     }),
   )
   .handler(async ({ data }) => {

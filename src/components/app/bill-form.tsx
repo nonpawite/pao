@@ -10,7 +10,7 @@ import { Label } from '#/components/ui/label'
 import { nextDue } from '#/lib/bills'
 import { ordinal } from '#/lib/i18n'
 import type { Locale, MessageKey } from '#/lib/i18n'
-import { parseAmount } from '#/lib/money'
+import { parseAmount, typedAmount } from '#/lib/money'
 import { cn } from '#/lib/utils'
 import { deleteBill, saveBill } from '#/server/bills'
 import { useActivePocket, useMoney, useShell, useT } from './context'
@@ -168,7 +168,7 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
                   required={!draft.varies}
                   disabled={draft.varies}
                   value={draft.varies ? '' : draft.amount}
-                  onChange={(e) => setDraft({ ...draft, amount: e.target.value.replace(/[^\d.]/g, '') })}
+                  onChange={(e) => setDraft({ ...draft, amount: typedAmount(e.target.value) })}
                 />
                 <BillChip on={draft.varies} onClick={() => setDraft({ ...draft, varies: !draft.varies })} className="h-11">
                   {t('varies')}

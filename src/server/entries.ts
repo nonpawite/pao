@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { db } from '#/db/index'
 import { bankAccount, bill, category, entry } from '#/db/schema'
 import { addDays } from '#/lib/budget'
+import { maxAmount } from '#/lib/money'
 import { pocketEntries, requirePocket, requireUser, todayISO } from './session'
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -15,7 +16,7 @@ const entryInput = z.object({
   categoryId: z.uuid().nullable(),
   bankAccountId: z.uuid().nullable(),
   // Hundredths. Upper bound keeps it inside a Postgres integer.
-  amount: z.number().int().positive().max(2_000_000_000),
+  amount: z.number().int().positive().max(maxAmount),
   note: z.string().trim().max(200),
   occurredOn: isoDate,
 })
