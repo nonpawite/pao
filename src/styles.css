@@ -432,14 +432,30 @@
   }
 }
 
-/* A typing caret: the amount field is invisible over its tiles, so this shows where the typing goes. */
-.caret {
-  animation: caret-blink 1.06s steps(1) infinite;
+/* A pocket's card in Settings: a darker band with a light rule beside it, halftone dots fading in from the right, and
+   a faint gloss that drifts across as the card is pulled. All tone on tone, so colour still only names the pocket. */
+.pocket-card {
+  background-image: linear-gradient(100deg, transparent 58%, rgb(0 0 0 / 0.16) 58% 71%, rgb(255 255 255 / 0.28) 71% 72%, transparent 72%);
 }
-@keyframes caret-blink {
-  50% {
-    opacity: 0;
-  }
+.pocket-card::before,
+.pocket-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.pocket-card::before {
+  background-image: radial-gradient(circle, rgb(0 0 0 / 0.22) 1.1px, transparent 1.6px);
+  background-size: 5px 5px;
+  mask-image: linear-gradient(90deg, transparent 30%, #000 95%);
+}
+.pocket-card::after {
+  background:
+    linear-gradient(rgb(255 255 255 / 0.3), rgb(255 255 255 / 0.3)) top / 100% 1px no-repeat,
+    linear-gradient(105deg, transparent 40%, rgb(255 255 255 / 0.18) 50%, transparent 60%) 100% 0 / 260% 100% no-repeat;
+  transition: background-position 900ms ease-out;
+}
+.group:is(:hover, :focus-visible) .pocket-card::after {
+  background-position: top, 0 0;
 }
 
 /* Switching pocket crossfades the page while the figures flip. */
@@ -460,9 +476,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .flap,
-  .caret {
+  .flap {
     animation: none;
+  }
+  .pocket-card::after {
+    transition: none;
   }
   /* Dialogs, popovers and recap cards appear without zooming or sliding. */
   .animate-in,

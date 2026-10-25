@@ -571,12 +571,12 @@ export function AddEntryForm({
               <Flap text={`${symbol}${amountText || '0'}`} dim={!amountText} className="text-[34px]" />
             </output>
           ) : (
-            // The real field is invisible over the tiles, so a caret after them shows it has focus, instead of a box.
+            // The real field is invisible over the tiles, so an ink line under them shows it has focus, like the note's.
             <label className="group relative flex min-w-24 justify-end">
               <span className="sr-only">{t('amount')}</span>
-              <span aria-hidden className="flex items-center gap-1">
+              <span aria-hidden className="relative py-2">
                 <Flap text={`${symbol}${amountText || '0'}`} dim={!amountText} className="text-[32px]" />
-                <span className="caret hidden h-8 w-0.5 rounded-full bg-ink group-has-[input:focus]:block" />
+                <span className="absolute inset-x-0 bottom-0 hidden h-0.5 rounded-full bg-ink group-has-[input:focus]:block" />
               </span>
               {/* The real field lies over the tiles: typing goes to it, the tiles show it. */}
               <input

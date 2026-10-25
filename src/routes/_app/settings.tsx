@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
 import { Bank, CalendarBlank, Check, CircleHalf, Plus, SignOut, Translate, X } from '@phosphor-icons/react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/compone
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { authClient } from '#/lib/auth-client'
-import { pocketBg, pocketColors, securityPrint } from '#/lib/colors'
+import { pocketBg, pocketColors } from '#/lib/colors'
 import type { PocketColor } from '#/lib/colors'
 import { localeCodes, locales } from '#/lib/i18n'
 import type { MessageKey } from '#/lib/i18n'
@@ -404,7 +404,7 @@ function Pockets() {
       {/* Room above the first row for a pulled, tilted card. */}
       <div className="grid grid-cols-2 gap-x-3 gap-y-5 pt-5">
         {shell.pockets.map((p) => (
-          <PocketTile key={p.id} color={pocketBg(p.color)} seed={p.id} onClick={() => setOpenId(p.id)}>
+          <PocketTile key={p.id} color={pocketBg(p.color)} onClick={() => setOpenId(p.id)}>
             <span className="caps truncate text-[17px]">{p.name}</span>
             <span className="caps truncate text-[11px] text-on-board-2">
               {kindLabel(p)}
@@ -463,37 +463,19 @@ function tilt(e: { currentTarget: HTMLElement }) {
   e.currentTarget.style.setProperty('--tilt', `${deg.toFixed(2)}deg`)
 }
 
-function PocketTile({
-  color,
-  seed,
-  empty,
-  onClick,
-  children,
-}: {
-  color?: string
-  seed?: string
-  empty?: boolean
-  onClick: () => void
-  children: ReactNode
-}) {
-  const print = useMemo(() => seed && securityPrint(seed), [seed])
+function PocketTile({ color, empty, onClick, children }: { color?: string; empty?: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <button type="button" onClick={onClick} onPointerEnter={tilt} onFocus={tilt} className="group relative grid pt-4 text-left">
+    <button type="button" onClick={onClick} onPointerEnter={tilt} onFocus={tilt} className="group relative grid pt-6 text-left">
       <span
         aria-hidden
-        style={color ? { background: color } : undefined}
+        style={color ? { backgroundColor: color } : undefined}
         className={cn(
-          'absolute inset-x-3 top-0 h-10 origin-bottom overflow-hidden rounded-t-sm transition-[translate,rotate] duration-200 ease-out group-hover:-translate-y-2.5 group-hover:rotate-(--tilt) group-focus-visible:-translate-y-2.5 group-focus-visible:rotate-(--tilt) motion-reduce:rotate-none! motion-reduce:transition-none',
+          // Taller than it shows, so a tilted card never lifts its bottom corner out of the pocket.
+          'absolute inset-x-3 top-0 h-12 origin-bottom overflow-hidden rounded-t-sm transition-[translate,rotate] duration-200 ease-out group-hover:-translate-y-2.5 group-hover:rotate-(--tilt) group-focus-visible:-translate-y-2.5 group-focus-visible:rotate-(--tilt) motion-reduce:rotate-none! motion-reduce:transition-none',
           // The empty pocket's card waits inside it, and rises only to show where a new one goes.
-          empty && 'translate-y-4 border-2 border-b-0 border-dashed border-ink',
+          empty ? 'translate-y-6 border-2 border-b-0 border-dashed border-ink' : 'pocket-card',
         )}
-      >
-        {print && (
-          <svg viewBox="0 0 240 40" preserveAspectRatio="none" className="absolute inset-0 size-full">
-            <path d={print} fill="none" stroke="rgb(0 0 0 / 0.2)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-          </svg>
-        )}
-      </span>
+      />
       <span
         className={cn(
           'relative grid min-h-24 gap-0.5 rounded-sm px-4 pb-3.5',

@@ -318,7 +318,7 @@ Plain and ink-led.
 - **Outline:** strong-rule border, transparent; hover fills plate.
 - **Secondary:** plate fill; hover steps to the hairline tone.
 - **Ghost:** no fill until hover, then plate.
-- **Focus:** 2px ink outline, 2px offset, on every interactive element. A field hidden over a visual passes its focus to that visual: the date input's ring goes to its chip, and the typed amount shows a blinking ink caret after its flap tiles instead of a box (steady under reduced motion). The add sheet's note field, which sits bare on the board, shows focus as a 2px ink line under its text. Closing a dialog or sheet returns focus to whatever opened it; the phone sheet takes focus as it opens.
+- **Focus:** 2px ink outline, 2px offset, on every interactive element. A field hidden over a visual passes its focus to that visual: the date input's ring goes to its chip, and the typed amount shows a 2px ink line under its flap tiles instead of a box. The add sheet's note field, which sits bare on the board, shows focus the same way, a 2px ink line under its text. Closing a dialog or sheet returns focus to whatever opened it; the phone sheet takes focus as it opens.
 - **The add button:** on desktop a full-width ink bar in the sidebar foot with a `N` key hint; on phone a 44px ink square (8px corners) centred in the tab bar with a bold plus.
 
 ### Chips
@@ -375,7 +375,7 @@ A Phosphor outline pictogram picked from the category name, in ink-2, with no ti
 A month grid of white cells on hairlines. Day numbers in Geist; picked and hovered cells fill plate; late bills in over red; today's date sits in a small accent badge with an ink number; the pocket's cycle start carries a "Payday" label on desktop ("Cycle starts" in a shared pocket) and a short accent line under the date on the phone, where the word does not fit.
 
 ### Settings Pocket Tiles (sanctioned exception)
-Pockets in Settings are "card in a pocket" tiles: the pocket's coloured card peeks above a white panel, printed with fine guilloche lines a shade darker than its colour (each pocket's own pattern, seeded from its id). On hover or focus it slides up 10px and tilts 1.5–3°, left or right at random on every pull, like a card tugged from a pocket, over 200ms ease-out; reduced motion keeps the slide and drops the tilt. An empty slot is a 2px dashed ink-3 outline that turns ink on hover, with its dashed card hidden inside until a hover or focus pulls it up the same way. This is the only hover motion beyond colour in the system, chosen explicitly by the user.
+Pockets in Settings are "card in a pocket" tiles: the pocket's coloured card peeks 24px above a white panel, printed tone on tone: a darker band with a thin light rule beside it, halftone dots fading in from the right, and a 1px light top edge. On hover or focus it slides up 10px and tilts 1.5–3°, left or right at random on every pull, like a card tugged from a pocket, over 200ms ease-out, while a faint gloss drifts across it over 900ms; reduced motion keeps the slide and drops the tilt and the gloss. An empty slot is a 2px dashed ink-3 outline that turns ink on hover, with its dashed card hidden inside until a hover or focus pulls it up the same way. This is the only hover motion beyond colour in the system, chosen explicitly by the user.
 
 ### Icons
 Phosphor icons. Navigation, pictograms and status icons use the regular weight at 16–24px; small action glyphs (plus, carets, arrows, close, check) use the bold weight at 12–16px so they hold up at that size.
