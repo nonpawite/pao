@@ -218,6 +218,8 @@ export const th: Messages = {
   deletePocketTitle: 'ลบ {name} ไหม?',
   deletePocketHint: 'กระเป๋าจะหายไปสำหรับสมาชิกทุกคน พร้อมรายการ หมวด และวงเงินทั้งหมดในนั้น ย้อนกลับไม่ได้',
   currency: 'สกุลเงิน',
+  searchCurrency: 'ค้นหาด้วยรหัสหรือชื่อ',
+  noCurrency: 'ไม่พบสกุลเงินนี้',
   changeCurrencyTitle: 'เปลี่ยนเป็น {currency} ไหม?',
   changeCurrencyHint: 'ตัวเลขเดิมแค่เปลี่ยนสกุล ไม่ได้แปลงค่า: {from} จะกลายเป็น {to}',
   changeCurrency: 'เปลี่ยน',

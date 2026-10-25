@@ -297,6 +297,28 @@
 }
 
 @layer components {
+  /* A scrolling list inside a floating board: a 6px thumb in the hairline tone on no track, so it sits in the board.
+     Chrome drops these rules once scrollbar-width is set, so only browsers without them (Firefox) get the standard ones. */
+  .scroll-quiet::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scroll-quiet::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scroll-quiet::-webkit-scrollbar-thumb {
+    background: var(--rule-strong);
+    border: 0;
+    border-radius: 3px;
+  }
+  .scroll-quiet::-webkit-scrollbar-thumb:hover {
+    background: var(--ink-3);
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    .scroll-quiet {
+      scrollbar-width: thin;
+      scrollbar-color: var(--rule-strong) transparent;
+    }
+  }
   /* Money set aside for bills still to pay: hatched, in the current text colour. */
   .set-aside {
     background: repeating-linear-gradient(135deg, currentColor 0 2px, transparent 2px 4px);

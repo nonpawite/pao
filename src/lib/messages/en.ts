@@ -217,6 +217,8 @@ export const en = {
   deletePocketTitle: 'Delete {name}?',
   deletePocketHint: 'It goes for every member, with every entry, category and limit in it. This cannot be undone.',
   currency: 'Currency',
+  searchCurrency: 'Search by code or name',
+  noCurrency: 'No currency by that name or code.',
   changeCurrencyTitle: 'Switch to {currency}?',
   changeCurrencyHint: 'Amounts are relabelled, not converted: {from} becomes {to}.',
   changeCurrency: 'Switch',

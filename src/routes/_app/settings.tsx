@@ -9,7 +9,7 @@ import { pickerClass } from '#/components/app/bill-form'
 import { useMoney, useShell, useT } from '#/components/app/context'
 import { PocketPlan } from '#/components/app/pocket-plan'
 import { Avatar, Group, PageTitle, Row, Segmented, onRadioKeys, pageMain } from '#/components/app/kit'
-import { Picker } from '#/components/app/picker'
+import { Picker, currencyOptions } from '#/components/app/picker'
 import { setTheme, themeNames, useTheme } from '#/components/app/theme'
 import { Button } from '#/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/components/ui/dialog'
@@ -20,7 +20,6 @@ import { pocketBg, pocketColors } from '#/lib/colors'
 import type { PocketColor } from '#/lib/colors'
 import { localeCodes, locales } from '#/lib/i18n'
 import type { MessageKey } from '#/lib/i18n'
-import { currencies } from '#/lib/money'
 import { themes } from '#/lib/theme'
 import { cn } from '#/lib/utils'
 import {
@@ -663,7 +662,6 @@ function PocketCurrency({ pocket }: { pocket: Shell['pockets'][number] }) {
   const [next, setNext] = useState<string | null>(null)
   const from = useMoney(pocket.currency)
   const to = useMoney(next ?? pocket.currency)
-  const names = new Intl.DisplayNames([locales[locale].tag], { type: 'currency' })
   return (
     <div className="grid gap-3">
       <div className="flex items-center justify-between gap-3">
@@ -675,7 +673,8 @@ function PocketCurrency({ pocket }: { pocket: Shell['pockets'][number] }) {
           label={t('currency')}
           disabled={pocket.role !== 'owner'}
           value={pocket.currency}
-          options={currencies.map((c) => ({ value: c, label: <span className="truncate">{`${c} · ${names.of(c)}`}</span> }))}
+          options={currencyOptions(locales[locale].tag)}
+          search={{ placeholder: t('searchCurrency'), empty: t('noCurrency') }}
           display={pocket.currency}
           onChange={(c) => setNext(c === pocket.currency ? null : c)}
           className={cn(pickerClass, 'shrink-0')}

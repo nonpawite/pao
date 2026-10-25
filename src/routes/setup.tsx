@@ -7,7 +7,7 @@ import { oneTapClass } from '#/components/app/add-entry'
 import { dayChoices, pickerClass } from '#/components/app/bill-form'
 import { makeT } from '#/components/app/context'
 import { Board, BoardLine, CategoryGlyph, DayStrip, Flap, Group, Row, Segmented, glyphFor, useDocumentTitle } from '#/components/app/kit'
-import { Picker } from '#/components/app/picker'
+import { Picker, currencyOptions } from '#/components/app/picker'
 import { ThemeSwitch } from '#/components/app/theme'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
@@ -16,7 +16,7 @@ import { authClient } from '#/lib/auth-client'
 import { cycleFor, dayStrip } from '#/lib/budget'
 import type { StripDay } from '#/lib/budget'
 import { locales } from '#/lib/i18n'
-import { currencies, currencySymbol, formatMoney, parseAmount } from '#/lib/money'
+import { currencySymbol, formatMoney, parseAmount } from '#/lib/money'
 import { cn } from '#/lib/utils'
 import { finishSetup, getSetup } from '#/server/setup'
 import { getSessionUser } from '#/server/shell'
@@ -72,7 +72,6 @@ function Setup() {
   const limitOf = (c: Chosen) => (c.limitType === 'none' ? 0 : Math.max(0, parseAmount(c.amount, currency) ?? 0))
   const badLimit = (c: Chosen) => c.limitType !== 'none' && (limitOf(c) <= 0 || limitOf(c) > maxLimit)
   const limitLabel = (type: LimitType, limit: number) => (limit ? t(type === 'day' ? 'aDay' : 'aCycle', { amount: money(limit) }) : t('noLimit'))
-  const currencyNames = new Intl.DisplayNames([tag], { type: 'currency' })
 
   function addCategory(name: string) {
     setCategories((cs) => [...cs, { name: name.trim(), limitType: 'none', amount: '' }])
@@ -170,7 +169,8 @@ function Setup() {
               id="setup-currency"
               label={t('currency')}
               value={currency}
-              options={currencies.map((c) => ({ value: c, label: <span className="truncate">{`${c} · ${currencyNames.of(c)}`}</span> }))}
+              options={currencyOptions(tag)}
+              search={{ placeholder: t('searchCurrency'), empty: t('noCurrency') }}
               display={currency}
               onChange={setCurrency}
               className={cn(pickerClass, 'shrink-0')}
