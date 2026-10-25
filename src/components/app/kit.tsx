@@ -101,14 +101,15 @@ export function Flap({ text, dim, className }: { text: string; dim?: boolean; cl
   const prev = useRef<typeof tiles>([])
   const first = Math.max(0, tiles.findIndex((t, i) => t.ch !== prev.current[i]?.ch))
   // Tiles cut from the end (a deleted digit) flip away instead of vanishing.
-  const [leaving, setLeaving] = useState<Array<(typeof tiles)[number] & { id: number }>>([])
+  const [leaving, setLeaving] = useState<Array<(typeof tiles)[number] & { id: number; at: number }>>([])
   const nextId = useRef(0)
   useLayoutEffect(() => {
     const before = prev.current
     prev.current = tiles
     if (tiles.length >= before.length) return setLeaving((ls) => (ls.length ? [] : ls))
-    const gone = before.slice(tiles.length).map((t) => ({ ...t, id: nextId.current++ }))
-    setLeaving((ls) => [...ls, ...gone])
+    const gone = before.slice(tiles.length).map((t, j) => ({ ...t, id: nextId.current++, at: tiles.length + j }))
+    // In their old places: a quick second delete's tile goes before the first one's, as it stood in the figure.
+    setLeaving((ls) => [...ls, ...gone].sort((a, b) => a.at - b.at))
     // Each deletion's tiles leave on their own timer, so quick deletes don't strand one another.
     setTimeout(() => setLeaving((ls) => ls.filter((l) => !gone.includes(l))), 140)
   }, [text])
