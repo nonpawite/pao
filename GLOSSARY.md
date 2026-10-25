@@ -19,3 +19,11 @@ _Avoid_: Wallet, budget, account
 **Setup**:
 The first-run steps where a new member builds their personal pocket: its currency, cycle start day, categories and limits, plus their bank accounts. A member has no pocket until they finish it.
 _Avoid_: Onboarding, landing page, wizard
+
+**Admin**:
+The member who runs the household's instance: the first person to sign up. The admin invites new members.
+_Avoid_: Owner (a pocket role), superuser, self-hoster (the person with server access, usually the same person)
+
+**Invite**:
+A one-time code (and a link that carries it) an admin creates so one person can sign up, including while sign-up is closed. It works for 7 days.
+_Avoid_: Invitation, referral

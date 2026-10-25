@@ -14,6 +14,18 @@ export async function requireUser() {
   return session.user
 }
 
+/** The admin is the instance's oldest account (ADR 0002): worked out, not stored, so upgrades need nothing. */
+export async function adminId() {
+  const [first] = await db.select({ id: user.id }).from(user).orderBy(asc(user.createdAt), asc(user.id)).limit(1)
+  return first?.id ?? null
+}
+
+export async function requireAdmin() {
+  const u = await requireUser()
+  if (u.id !== (await adminId())) throw new Error('Only the admin can do that')
+  return u
+}
+
 /** The pocket, only if the user belongs to it. Every pocket-scoped read and write goes through here. */
 export async function requirePocket(userId: string, pocketId: string) {
   const [row] = await db

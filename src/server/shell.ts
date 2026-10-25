@@ -1,14 +1,15 @@
 import { createServerFn } from '@tanstack/react-start'
 import { setCookie } from '@tanstack/react-start/server'
-import { and, asc, count, desc, eq, gte, inArray, isNull, max } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gt, gte, inArray, isNull, max } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index'
-import { bankAccount, entry, pocket, pocketMember, user } from '#/db/schema'
-import { auth } from '#/lib/auth'
+import { bankAccount, entry, invite, pocket, pocketMember, user } from '#/db/schema'
+import { auth, signupOpen } from '#/lib/auth'
 import { addDays, cycleFor } from '#/lib/budget'
 import { isOwed } from '#/lib/bills'
 import { calendarNames, localeCodes, pickLocale } from '#/lib/i18n'
+import { normalizeInviteCode, signupGate } from '#/lib/invites'
 import type { CalendarNames, Locale } from '#/lib/i18n'
 import { activePocket, pocketBills, pocketCategories, pocketEntries, requirePocket, requireUser, todayISO } from './session'
 import { getRequestHeaders } from '@tanstack/react-start/server'
@@ -25,10 +26,25 @@ export const getSessionUser = createServerFn({ method: 'GET' }).handler(async ()
 })
 
 /** Sign-in's welcome board: the household's today, and calendar names for every language its switch can show. */
-export const getWelcome = createServerFn({ method: 'GET' }).handler(() => ({
-  today: todayISO(),
-  names: Object.fromEntries(localeCodes.map((l) => [l, calendarNames(l)])) as Record<Locale, CalendarNames>,
-}))
+export const getWelcome = createServerFn({ method: 'GET' })
+  .validator(z.object({ invite: z.string().max(20).optional() }).optional())
+  .handler(async ({ data }) => {
+    const [{ members }] = await db.select({ members: count() }).from(user)
+    // An invite link pre-fills the code, and the name the admin gave it, on sign-up.
+    const code = data?.invite ? normalizeInviteCode(data.invite) : null
+    const [found] = code
+      ? await db
+          .select({ name: invite.name })
+          .from(invite)
+          .where(and(eq(invite.code, code), isNull(invite.usedAt), gt(invite.expiresAt, new Date())))
+      : []
+    return {
+      today: todayISO(),
+      names: Object.fromEntries(localeCodes.map((l) => [l, calendarNames(l)])) as Record<Locale, CalendarNames>,
+      signup: signupGate(signupOpen(), members),
+      invite: code && found ? { code, name: found.name } : null,
+    }
+  })
 
 /** Everything the app frame needs: pockets for the switcher, and what the add form needs for every pocket. */
 export const getShell = createServerFn({ method: 'GET' }).handler(async () => {

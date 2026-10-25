@@ -12,17 +12,22 @@ import { getSessionUser, getWelcome } from '#/server/shell'
 // stays a login to them, so they never offered to save the new password.
 export const Route = createFileRoute('/signup')({
   validateSearch: welcomeSearch,
+  loaderDeps: ({ search }) => ({ invite: search.invite }),
   beforeLoad: async () => {
     if (await getSessionUser()) throw redirect({ to: '/' })
   },
-  loader: () => getWelcome(),
+  loader: ({ deps }) => getWelcome({ data: { invite: deps.invite } }),
   component: Signup,
 })
 
 function Signup() {
   const router = useRouter()
-  const welcome = useWelcome(Route.useSearch().lang, Route.useLoaderData())
+  const search = Route.useSearch()
+  const data = Route.useLoaderData()
+  const welcome = useWelcome(search.lang, data)
   const { t, locale } = welcome
+  // While sign-up is by invite the code is required; an invite link brings one either way.
+  const askCode = data.signup === 'invite' || !!search.invite
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   // Until the page is live, the form would post natively and reload; wait for hydration instead.
@@ -32,19 +37,25 @@ function Signup() {
   async function submit(form: FormData) {
     setBusy(true)
     setError('')
-    const res = await authClient.signUp.email({
-      email: String(form.get('email')).trim().toLowerCase(),
-      password: String(form.get('password')),
-      name: String(form.get('name')).trim(),
-      locale,
-    })
+    const code = String(form.get('invite') ?? '').trim()
+    const res = await authClient.signUp.email(
+      {
+        email: String(form.get('email')).trim().toLowerCase(),
+        password: String(form.get('password')),
+        name: String(form.get('name')).trim(),
+        locale,
+      },
+      // The server checks and uses up the invite as it makes the account (ADR 0002).
+      code ? { headers: { 'x-invite': code } } : undefined,
+    )
     setBusy(false)
-    if (res.error) return setError(res.error.message || t('signUpFailed'))
+    if (res.error) return setError(res.error.code === 'INVITE_INVALID' ? t('inviteInvalid') : res.error.message || t('signUpFailed'))
     await router.navigate({ to: '/setup' })
   }
 
   return (
     <Welcome welcome={welcome} title={t('signUp')}>
+      {data.signup === 'first' && <p className="-mt-4 text-[15px] text-ink-2">{t('firstAdmin')}</p>}
       {/* method=post: if scripts fail to load, credentials must never land in the URL. */}
       <form
         method="post"
@@ -54,9 +65,31 @@ function Signup() {
           void submit(new FormData(e.currentTarget))
         }}
       >
+        {askCode && (
+          <div className="grid gap-1.5">
+            <Label htmlFor="invite">{t('inviteCode')}</Label>
+            <Input
+              id="invite"
+              name="invite"
+              required={data.signup === 'invite'}
+              defaultValue={data.invite?.code ?? search.invite ?? ''}
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              maxLength={20}
+              aria-describedby={search.invite ? undefined : 'invite-hint'}
+              className="font-board font-medium tracking-wider uppercase"
+            />
+            {!search.invite && (
+              <p id="invite-hint" className="text-[13px] text-ink-2">
+                {t('inviteOnlyHint')}
+              </p>
+            )}
+          </div>
+        )}
         <div className="grid gap-1.5">
           <Label htmlFor="name">{t('yourName')}</Label>
-          <Input id="name" name="name" required autoComplete="name" maxLength={40} />
+          <Input id="name" name="name" required autoComplete="name" maxLength={40} defaultValue={data.invite?.name ?? ''} />
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="email">{t('email')}</Label>

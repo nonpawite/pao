@@ -7,8 +7,11 @@ import { ThemeSwitch } from './theme'
 import { localeCodes, locales, pickLocale } from '#/lib/i18n'
 import type { CalendarNames, Locale } from '#/lib/i18n'
 
-/** ?lang= carries a language picked on sign-in over to sign-up and back. */
-export const welcomeSearch = (search: Record<string, unknown>): { lang?: Locale } => ({ lang: localeCodes.find((l) => l === search.lang) })
+/** ?lang= carries a language picked on sign-in over to sign-up and back; ?invite= is an invite link's code. */
+export const welcomeSearch = (search: Record<string, unknown>): { lang?: Locale; invite?: string } => ({
+  lang: localeCodes.find((l) => l === search.lang),
+  invite: typeof search.invite === 'string' ? search.invite.slice(0, 20) : undefined,
+})
 
 /** The page's language (the one passed along, else the browser's), with the welcome board's day. */
 export function useWelcome(lang: Locale | undefined, { names, today }: { names: Record<Locale, CalendarNames>; today: string }) {

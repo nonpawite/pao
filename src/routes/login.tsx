@@ -19,7 +19,8 @@ export const Route = createFileRoute('/login')({
 
 function Login() {
   const router = useRouter()
-  const welcome = useWelcome(Route.useSearch().lang, Route.useLoaderData())
+  const data = Route.useLoaderData()
+  const welcome = useWelcome(Route.useSearch().lang, data)
   const { t, locale } = welcome
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -66,7 +67,7 @@ function Login() {
       </form>
 
       <Link to="/signup" search={{ lang: locale }} className="-my-3 grid h-11 place-items-center text-[15px] font-medium underline decoration-2 underline-offset-4">
-        {t('noAccount')}
+        {data.signup === 'invite' ? t('haveInvite') : t('noAccount')}
       </Link>
     </Welcome>
   )

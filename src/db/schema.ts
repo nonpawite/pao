@@ -65,6 +65,22 @@ export const category = pgTable(
   (t) => [index('category_pocket_idx').on(t.pocketId)],
 )
 
+// A one-time sign-up code the admin makes for one new member (ADR 0002). Used once; works until expiresAt.
+export const invite = pgTable('invite', {
+  id: uuid().primaryKey().defaultRandom(),
+  // XXXX-XXXX, as normalizeInviteCode writes it.
+  code: text().notNull().unique(),
+  // Who it's for, as the admin typed it; pre-fills the name on sign-up.
+  name: text(),
+  createdBy: text('created_by')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  usedAt: timestamp('used_at'),
+  usedBy: text('used_by').references(() => user.id, { onDelete: 'set null' }),
+})
+
 // Named bankAccount because Better Auth owns the `account` table.
 export const bankAccount = pgTable('bank_account', {
   id: uuid().primaryKey().defaultRandom(),

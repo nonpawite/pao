@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
-import { Bank, CalendarBlank, Check, CircleHalf, Plus, SignOut, Translate, X } from '@phosphor-icons/react'
+import { Bank, CalendarBlank, Check, CircleHalf, Plus, SignOut, Ticket, Translate, X } from '@phosphor-icons/react'
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
@@ -36,12 +36,15 @@ import {
   setPocketCurrency,
   updatePocket,
 } from '#/server/settings'
+import { createInvite, getMembers, revokeInvite } from '#/server/invites'
 import { setLocale, setWeekStart } from '#/server/shell'
 import type { Shell } from '#/server/shell'
 
 export const Route = createFileRoute('/_app/settings')({
   // ?pocket= opens that pocket's settings, so other pages can link straight to its categories.
   validateSearch: z.object({ pocket: z.string().optional() }),
+  // Members and invites, for the admin only (null for everyone else).
+  loader: () => getMembers(),
   component: Settings,
 })
 
@@ -67,6 +70,7 @@ function Settings() {
   const run = useRun()
   const { t } = useT()
   const theme = useTheme()
+  const members = Route.useLoaderData()
   const [account, setAccount] = useState('')
 
   return (
@@ -162,6 +166,8 @@ function Settings() {
 
       <Pockets />
 
+      {members && <Members data={members} />}
+
       <Button
         variant="outline"
         size="lg"
@@ -181,6 +187,91 @@ function Settings() {
 type Field = 'name' | 'email' | 'password'
 
 /** Name, email and password as ruled rows; EDIT opens one row at a time into its form. */
+/** Copies text, also over plain http on a home network, where the browser keeps the clipboard API off. */
+async function copyText(text: string) {
+  if (window.isSecureContext && navigator.clipboard) return navigator.clipboard.writeText(text)
+  const field = document.createElement('textarea')
+  field.value = text
+  field.style.cssText = 'position:fixed;opacity:0'
+  document.body.append(field)
+  field.select()
+  document.execCommand('copy')
+  field.remove()
+}
+
+/** The admin's list: everyone on the instance, invites still waiting, and a way to make one (ADR 0002). */
+function Members({ data }: { data: NonNullable<Awaited<ReturnType<typeof getMembers>>> }) {
+  const run = useRun()
+  const { t, day } = useT()
+  const [name, setName] = useState('')
+  const copy = async (code: string) => {
+    await copyText(`${location.origin}/signup?invite=${code}`)
+    toast(t('linkCopied'))
+  }
+
+  return (
+    <Group title={t('everyone')}>
+      {data.members.map((m) => (
+        <Row key={m.id} className="flex items-center gap-3">
+          <Avatar name={m.name} />
+          <span className="grid min-w-0 flex-1">
+            <span className="truncate">{m.name}</span>
+            <span className="truncate text-[13px] text-ink-2">{m.email}</span>
+          </span>
+          {m.id === data.admin && <span className="caps shrink-0 text-[12px] text-ink-2">{t('admin')}</span>}
+        </Row>
+      ))}
+      {data.pending.map((i) => (
+        <Row key={i.id} className="flex items-center gap-3">
+          <Ticket aria-hidden className="size-7 shrink-0 p-1 text-ink-2" />
+          <span className="grid min-w-0 flex-1">
+            <span className="truncate">{i.name || t('inviteUnnamed')}</span>
+            <span className="truncate text-[13px] text-ink-2">
+              <span className="font-board font-medium text-ink">{i.code}</span> · {t('inviteUntil', { date: day(i.expiresAt.toISOString().slice(0, 10)) })}
+            </span>
+          </span>
+          <Button variant="ghost" size="sm" onClick={() => void copy(i.code)}>
+            {t('copyLink')}
+          </Button>
+          <button
+            type="button"
+            aria-label={t('revokeInvite', { name: i.name || i.code })}
+            onClick={() => run(() => revokeInvite({ data: { id: i.id } }))}
+            className="-mr-3 grid size-11 shrink-0 place-items-center text-ink-2 transition-colors hover:text-ink"
+          >
+            <X weight="bold" className="size-4" />
+          </button>
+        </Row>
+      ))}
+      <Row className="grid gap-2">
+        <form
+          className="flex gap-2"
+          onSubmit={async (e) => {
+            e.preventDefault()
+            let code = ''
+            const made = await run(async () => {
+              code = (await createInvite({ data: { name } })).code
+            })
+            if (!made) return
+            setName('')
+            toast(t('inviteReady', { code }), { action: { label: t('copyLink'), onClick: () => void copy(code) } })
+          }}
+        >
+          <Label htmlFor="invite-name" className="sr-only">
+            {t('inviteFor')}
+          </Label>
+          <Input id="invite-name" placeholder={t('inviteFor')} maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />
+          <Button type="submit" variant="outline" className="shrink-0">
+            <Plus aria-hidden weight="bold" />
+            {t('makeInvite')}
+          </Button>
+        </form>
+        <p className="text-[13px] text-ink-2">{t('invitesHint')}</p>
+      </Row>
+    </Group>
+  )
+}
+
 function Profile() {
   const shell = useShell()
   const router = useRouter()

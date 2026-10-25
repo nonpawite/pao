@@ -374,6 +374,9 @@ A Phosphor outline pictogram picked from the category name, in ink-2, with no ti
 ### Bills Calendar
 A month grid of white cells on hairlines. Day numbers in Geist; picked and hovered cells fill plate; late bills in over red; today's date sits in a small accent badge with an ink number; the pocket's cycle start carries a "Payday" label on desktop ("Cycle starts" in a shared pocket) and a short accent line under the date on the phone, where the word does not fit.
 
+### Members and Invites (admin only)
+A Settings Group: each member as a ruled row (avatar, name over email in ink-2, "Admin" in the label style at the right for the admin), then pending invites (a ticket pictogram, the name it is for, its code in the figure face and the date it stops working, a ghost "Copy link" and a close glyph to revoke), then a field for who it is for and an outline "Invite" button. On sign-up, the invite code field comes first, in the figure face with wide tracking.
+
 ### Settings Pocket Tiles (sanctioned exception)
 Pockets in Settings are "card in a pocket" tiles: the pocket's coloured card peeks 24px above a white panel, printed tone on tone: the pocket's initials (first letter of its first two words) in Geist 600 at 28px, set low so the pocket half-covers them until a pull, a darker band with a thin light rule beside it, faint halftone dots fading in from the right, and a 1px light top edge. On hover or focus it slides up 10px and tilts 1.5–3°, left or right at random on every pull, like a card tugged from a pocket, over 200ms ease-out, while a faint gloss drifts across it over 900ms; reduced motion keeps the slide and drops the tilt and the gloss. An empty slot is a 2px dashed ink-3 outline that turns ink on hover, with its dashed card hidden inside until a hover or focus pulls it up the same way. This is the only hover motion beyond colour in the system, chosen explicitly by the user.
 

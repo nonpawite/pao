@@ -16,7 +16,7 @@ The members of one household sharing a self-hosted instance. A household can be 
 
 A typical member is paid on a fixed day each month and keeps money in more than one bank account (main, saving, investment). Their job: know how much they spent this cycle and on what, so they can cut a category and save more.
 
-One member, the self-hoster, installs Pao for the household, closes signup once everyone has joined, and runs upgrades and backups.
+One member, the self-hoster, installs Pao for the household, signs up first (which makes them the admin), invites the others, and runs upgrades and backups.
 
 ## Product Purpose
 
@@ -36,7 +36,7 @@ A limit tracker, not a bank and not a ledger. No bank sync, no balance reconcili
 ## Capabilities and Constraints
 
 - Multiple members through Better Auth. Each member's data is private and never visible to other members, except inside shared pockets they belong to.
-- Signup is open until the self-hoster closes it for the instance. No invite links or admin roles.
+- One admin per instance: its oldest account, normally the self-hoster. Sign-up is by invite by default: the admin makes a one-time code (and link) for each new member, valid 7 days. The self-hoster can open sign-up to anyone instead (ADR 0002). There are no other roles.
 - Shared pocket: has its own categories, limits, cycle start day and currency (set by its owner); any invited member logs spending into it; each entry shows who logged it. Spending in a pocket counts only toward that pocket, never toward anyone's personal limits. No splitting or settle-up.
 - Category limits are per day or per cycle. Per-day limits are strict: every day resets to the full limit, over-limit days are flagged, and the cycle total is the sum of days. No rollover.
 - Bills: monthly or yearly bills per pocket, with due dates. A bill still owed this cycle can be logged in one tap.
