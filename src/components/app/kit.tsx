@@ -110,7 +110,7 @@ export function Flap({ text, dim, className }: { text: string; dim?: boolean; cl
     const gone = before.slice(tiles.length).map((t) => ({ ...t, id: nextId.current++ }))
     setLeaving((ls) => [...ls, ...gone])
     // Each deletion's tiles leave on their own timer, so quick deletes don't strand one another.
-    setTimeout(() => setLeaving((ls) => ls.filter((l) => !gone.includes(l))), 280)
+    setTimeout(() => setLeaving((ls) => ls.filter((l) => !gone.includes(l))), 140)
   }, [text])
   // The figure's width in em (tile widths from styles.css, plus the gap), so .flaps can shrink it to fit its container.
   // shortcut: copies styles.css's tile widths and guesses a sign's width from its letter count, so a figure can clip
