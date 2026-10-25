@@ -59,8 +59,17 @@
   unicode-range: U+0025, U+002B-002E, U+0030-0039, U+2212;
 }
 
-/* The app follows the system appearance. */
-@custom-variant dark (@media (prefers-color-scheme: dark));
+/* The app follows the system appearance unless the member picks Light or Dark, which sets data-theme on the root. */
+@custom-variant dark {
+  &:where([data-theme='dark'], [data-theme='dark'] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme='light']), :root:not([data-theme='light']) *) {
+      @slot;
+    }
+  }
+}
 
 /*
  * Quiet Ledger: white panels on a soft page, hairline rules, words in Anuphan and figures in Geist with tabular digits.
@@ -150,8 +159,8 @@
   --radius: 6px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
+:root {
+  @variant dark {
     color-scheme: dark;
     --ground: #0d0d0e;
     --plate: #1d1d20;
@@ -288,6 +297,28 @@
 }
 
 @layer components {
+  /* A scrolling list inside a floating board: a 6px thumb in the hairline tone on no track, so it sits in the board.
+     Chrome drops these rules once scrollbar-width is set, so only browsers without them (Firefox) get the standard ones. */
+  .scroll-quiet::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scroll-quiet::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scroll-quiet::-webkit-scrollbar-thumb {
+    background: var(--rule-strong);
+    border: 0;
+    border-radius: 3px;
+  }
+  .scroll-quiet::-webkit-scrollbar-thumb:hover {
+    background: var(--ink-3);
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    .scroll-quiet {
+      scrollbar-width: thin;
+      scrollbar-color: var(--rule-strong) transparent;
+    }
+  }
   /* Money set aside for bills still to pay: hatched, in the current text colour. */
   .set-aside {
     background: repeating-linear-gradient(135deg, currentColor 0 2px, transparent 2px 4px);
@@ -364,6 +395,22 @@
   height: 1px;
   background: var(--board);
 }
+/* A deleted character's tile flips away on the typing flip's fast-start curve, in half its time, and folds its width
+   (and the gap before it) to nothing, so the figure slides over instead of jumping when the tile goes. */
+.flap[data-out] {
+  overflow: hidden;
+  animation: flap-out 140ms cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+@keyframes flap-out {
+  to {
+    width: 0;
+    min-width: 0;
+    padding-inline: 0;
+    margin-inline-start: -0.06em;
+    transform: rotateX(86deg);
+    opacity: 0;
+  }
+}
 /* A sign's tile is as narrow as $ and grows with its letters (CHF, US$). */
 .flap[data-k='sym'] {
   width: auto;
@@ -401,6 +448,32 @@
   }
 }
 
+/* A pocket's card in Settings: a darker band with a light rule beside it, halftone dots fading in from the right, and
+   a faint gloss that drifts across as the card is pulled. All tone on tone, so colour still only names the pocket. */
+.pocket-card {
+  background-image: linear-gradient(100deg, transparent 58%, rgb(0 0 0 / 0.16) 58% 71%, rgb(255 255 255 / 0.28) 71% 72%, transparent 72%);
+}
+.pocket-card::before,
+.pocket-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.pocket-card::before {
+  background-image: radial-gradient(circle, rgb(0 0 0 / 0.12) 1.1px, transparent 1.6px);
+  background-size: 5px 5px;
+  mask-image: linear-gradient(90deg, transparent 30%, #000 95%);
+}
+.pocket-card::after {
+  background:
+    linear-gradient(rgb(255 255 255 / 0.3), rgb(255 255 255 / 0.3)) top / 100% 1px no-repeat,
+    linear-gradient(105deg, transparent 40%, rgb(255 255 255 / 0.18) 50%, transparent 60%) 100% 0 / 260% 100% no-repeat;
+  transition: background-position 900ms ease-out;
+}
+.group:is(:hover, :focus-visible) .pocket-card::after {
+  background-position: top, 0 0;
+}
+
 /* Switching pocket crossfades the page while the figures flip. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
@@ -421,6 +494,12 @@
 @media (prefers-reduced-motion: reduce) {
   .flap {
     animation: none;
+  }
+  .flap[data-out] {
+    display: none;
+  }
+  .pocket-card::after {
+    transition: none;
   }
   /* Dialogs, popovers and recap cards appear without zooming or sliding. */
   .animate-in,

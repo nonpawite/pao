@@ -2,6 +2,7 @@ import { useRouter } from '@tanstack/react-router'
 import { Receipt } from '@phosphor-icons/react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
+import { toast } from 'sonner'
 
 import { Button } from '#/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/components/ui/dialog'
@@ -9,7 +10,8 @@ import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { nextDue } from '#/lib/bills'
 import { ordinal } from '#/lib/i18n'
-import { parseAmount } from '#/lib/money'
+import type { Locale, MessageKey } from '#/lib/i18n'
+import { parseAmount, typedAmount } from '#/lib/money'
 import { cn } from '#/lib/utils'
 import { deleteBill, saveBill } from '#/server/bills'
 import { useActivePocket, useMoney, useShell, useT } from './context'
@@ -77,6 +79,11 @@ export const pickerClass = 'h-11 min-w-24 rounded-sm border border-mark bg-board
 /** Days of the month as the pickers show them: 1–30, then the last day, which also covers the 31st. */
 export function useDays() {
   const { t, locale } = useT()
+  return dayChoices(t, locale)
+}
+
+/** Days of the month for a picker, outside the app shell too (Setup). */
+export function dayChoices(t: (key: MessageKey) => string, locale: Locale) {
   return {
     dayOptions: [...Array.from({ length: 30 }, (_, i) => ({ value: i + 1, label: String(i + 1) })), { value: 31, label: t('lastDay'), wide: true }],
     dayName: (d: number) => (d === 31 ? t('lastDay') : ordinal(locale, d)),
@@ -101,13 +108,15 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
     setConfirming(false)
   }
 
-  const run = async (fn: () => Promise<unknown>) => {
+  // `done` confirms the action in a toast once the dialog closes on it.
+  const run = async (fn: () => Promise<unknown>, done: string) => {
     setBusy(true)
     setError('')
     try {
       await fn()
       await router.invalidate()
       close()
+      toast.success(done)
     } catch {
       setError(t('somethingWrong'))
     } finally {
@@ -145,6 +154,7 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
                     month: draft.repeat === 'yearly' ? draft.month : null,
                   },
                 }),
+                t('billSaved', { name: draft.name.trim() }),
               )
             }}
           >
@@ -162,7 +172,7 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
                   required={!draft.varies}
                   disabled={draft.varies}
                   value={draft.varies ? '' : draft.amount}
-                  onChange={(e) => setDraft({ ...draft, amount: e.target.value.replace(/[^\d.]/g, '') })}
+                  onChange={(e) => setDraft({ ...draft, amount: typedAmount(e.target.value, true) })}
                 />
                 <BillChip on={draft.varies} onClick={() => setDraft({ ...draft, varies: !draft.varies })} className="h-11">
                   {t('varies')}
@@ -211,29 +221,33 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
                   ]}
                   className="w-44"
                 />
-                <label htmlFor="bill-day" className="caps text-[11px] text-ink-2">
-                  {t('onThe')}
-                </label>
-                <Picker
-                  id="bill-day"
-                  label={t('onThe')}
-                  value={draft.day}
-                  options={dayOptions}
-                  columns={7}
-                  display={dayName(draft.day)}
-                  onChange={(d) => setDraft({ ...draft, day: d })}
-                  className={pickerClass}
-                />
-                {draft.repeat === 'yearly' && (
+                {/* "on the 25th Oct" is one phrase: narrow pickers keep it beside the choice in the dialog, and on a
+                    phone it wraps whole, so the month never sits alone on a line. */}
+                <div className="flex items-center gap-2">
+                  <label htmlFor="bill-day" className="caps text-[11px] text-ink-2">
+                    {t('onThe')}
+                  </label>
                   <Picker
-                    label={t('month')}
-                    value={draft.month}
-                    options={names.months.map((m, i) => ({ value: i + 1, label: m }))}
-                    columns={4}
-                    onChange={(m) => setDraft({ ...draft, month: m })}
-                    className={pickerClass}
+                    id="bill-day"
+                    label={t('onThe')}
+                    value={draft.day}
+                    options={dayOptions}
+                    columns={7}
+                    display={dayName(draft.day)}
+                    onChange={(d) => setDraft({ ...draft, day: d })}
+                    className={cn(pickerClass, 'min-w-20')}
                   />
-                )}
+                  {draft.repeat === 'yearly' && (
+                    <Picker
+                      label={t('month')}
+                      value={draft.month}
+                      options={names.months.map((m, i) => ({ value: i + 1, label: m }))}
+                      columns={4}
+                      onChange={(m) => setDraft({ ...draft, month: m })}
+                      className={cn(pickerClass, 'min-w-20')}
+                    />
+                  )}
+                </div>
               </div>
               {next && <span className="caps text-[12px] text-ink-2">{t('nextDueOn', { date: day(next) })}</span>}
             </div>
@@ -252,7 +266,7 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
                   <Button type="button" variant="secondary" onClick={() => setConfirming(false)}>
                     {t('cancel')}
                   </Button>
-                  <Button type="button" variant="destructive" disabled={busy} onClick={() => void run(() => deleteBill({ data: { pocketId: pocket.id, id: draft.id! } }))}>
+                  <Button type="button" variant="destructive" disabled={busy} onClick={() => void run(() => deleteBill({ data: { pocketId: pocket.id, id: draft.id! } }), t('nameDeleted', { name: draft.name }))}>
                     {t('deleteBill')}
                   </Button>
                 </div>

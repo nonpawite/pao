@@ -8,7 +8,7 @@ import { Button } from '#/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/components/ui/dialog'
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from '#/components/ui/drawer'
 import { addDays } from '#/lib/budget'
-import { parseAmount } from '#/lib/money'
+import { parseAmount, typedAmount } from '#/lib/money'
 import { cn } from '#/lib/utils'
 import { addEntry, deleteEntry, getDayEntries, updateEntry } from '#/server/entries'
 import type { DayEntry } from '#/server/entries'
@@ -324,14 +324,19 @@ export function AddEntryForm({
     }
     setVersion((v) => v + 1)
     void router.invalidate()
-    toast(t('undone'), {
+    toast.success(t('undone'), {
       duration: 10000,
       action: {
         label: t('undo'),
         onClick: async () => {
-          await addEntry({ data: was })
-          setVersion((v) => v + 1)
-          await router.invalidate()
+          try {
+            await addEntry({ data: was })
+            setVersion((v) => v + 1)
+            await router.invalidate()
+            toast.success(t('entryBack'))
+          } catch {
+            toast.error(t('somethingWrong'))
+          }
         },
       },
     })
@@ -351,7 +356,7 @@ export function AddEntryForm({
   }
 
   const press = (k: (typeof keys)[number]) =>
-    setAmountText((s) => (k === 'del' ? s.slice(0, -1) : k === '.' && s.includes('.') ? s : (s + k).slice(0, 12)))
+    setAmountText((s) => (k === 'del' ? s.slice(0, -1) : typedAmount(s + k, true)))
 
   // Arrows move through categories like a radio group; Enter adds the focused one.
   function onCategoryKey(e: KeyboardEvent<HTMLDivElement>) {
@@ -562,7 +567,8 @@ export function AddEntryForm({
               placeholder={t('note')}
               maxLength={200}
               aria-label={t('note')}
-              className="-my-2 w-full min-w-0 rounded-xs bg-transparent py-2 text-[16px] text-on-board placeholder:text-on-board-2"
+              // Focus shows as an ink line under the text, as if writing on the line, not a box around the board.
+              className="-my-1.5 w-full min-w-0 border-b-2 border-transparent bg-transparent py-1.5 text-[16px] text-on-board outline-none placeholder:text-on-board-2 focus:border-ink"
             />
           </div>
           {keypad ? (
@@ -570,11 +576,12 @@ export function AddEntryForm({
               <Flap text={`${symbol}${amountText || '0'}`} dim={!amountText} className="text-[34px]" />
             </output>
           ) : (
-            // The real field is invisible over the tiles, so the tiles wear its focus ring.
-            <label className="relative flex min-w-24 justify-end rounded-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-4 has-[:focus-visible]:outline-[var(--focus)]">
+            // The real field is invisible over the tiles, so an ink line under them shows it has focus, like the note's.
+            <label className="group relative flex min-w-24 justify-end">
               <span className="sr-only">{t('amount')}</span>
-              <span aria-hidden>
+              <span aria-hidden className="relative py-2">
                 <Flap text={`${symbol}${amountText || '0'}`} dim={!amountText} className="text-[32px]" />
+                <span className="absolute inset-x-0 bottom-0 hidden h-0.5 rounded-full bg-ink group-has-[input:focus]:block" />
               </span>
               {/* The real field lies over the tiles: typing goes to it, the tiles show it. */}
               <input
@@ -583,8 +590,8 @@ export function AddEntryForm({
                 autoComplete="off"
                 maxLength={12}
                 value={amountText}
-                // Digits, a decimal point and + for sums (120+45); anything else never reaches the tiles.
-                onChange={(e) => setAmountText(e.target.value.replace(/[^\d.+]/g, ''))}
+                // Digits, a decimal point and + for sums (120+45), within the cap; anything else never reaches the tiles.
+                onChange={(e) => setAmountText(typedAmount(e.target.value, true))}
                 className="absolute inset-0 cursor-text opacity-0"
               />
             </label>
@@ -786,7 +793,7 @@ export function AddEntryForm({
 const chipClass =
   'inline-flex h-11 shrink-0 items-center rounded-sm border border-ink/25 px-3 text-[14px] whitespace-nowrap transition-colors hover:bg-plate lg:h-8'
 // Log-again and Due chips save in one tap, so on a phone they get a full thumb-sized target.
-const oneTapClass =
+export const oneTapClass =
   'inline-flex h-11 shrink-0 items-center gap-1 rounded-sm border border-ink/25 px-3 text-[14px] whitespace-nowrap transition-colors hover:bg-plate lg:h-9'
 const chipOn = 'border-ink bg-ink text-ground hover:bg-ink'
 

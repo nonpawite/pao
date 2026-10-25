@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
-import { Bank, CalendarBlank, Check, Plus, SignOut, Translate, X } from '@phosphor-icons/react'
+import { Bank, CalendarBlank, Check, CircleHalf, Plus, SignOut, Ticket, Translate, X } from '@phosphor-icons/react'
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
@@ -9,7 +9,8 @@ import { pickerClass } from '#/components/app/bill-form'
 import { useMoney, useShell, useT } from '#/components/app/context'
 import { PocketPlan } from '#/components/app/pocket-plan'
 import { Avatar, Group, PageTitle, Row, Segmented, onRadioKeys, pageMain } from '#/components/app/kit'
-import { Picker } from '#/components/app/picker'
+import { Picker, currencyOptions } from '#/components/app/picker'
+import { setTheme, themeNames, useTheme } from '#/components/app/theme'
 import { Button } from '#/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/components/ui/dialog'
 import { Input } from '#/components/ui/input'
@@ -17,9 +18,9 @@ import { Label } from '#/components/ui/label'
 import { authClient } from '#/lib/auth-client'
 import { pocketBg, pocketColors } from '#/lib/colors'
 import type { PocketColor } from '#/lib/colors'
-import { localeCodes, locales } from '#/lib/i18n'
+import { initials, localeCodes, locales, translate } from '#/lib/i18n'
 import type { MessageKey } from '#/lib/i18n'
-import { currencies } from '#/lib/money'
+import { themes } from '#/lib/theme'
 import { cn } from '#/lib/utils'
 import {
   addBankAccount,
@@ -35,22 +36,27 @@ import {
   setPocketCurrency,
   updatePocket,
 } from '#/server/settings'
+import { createInvite, getMembers, restoreInvite, revokeInvite } from '#/server/invites'
 import { setLocale, setWeekStart } from '#/server/shell'
 import type { Shell } from '#/server/shell'
 
 export const Route = createFileRoute('/_app/settings')({
   // ?pocket= opens that pocket's settings, so other pages can link straight to its categories.
   validateSearch: z.object({ pocket: z.string().optional() }),
+  // Members and invites, for the admin only (null for everyone else).
+  loader: () => getMembers(),
   component: Settings,
 })
 
 function useRun() {
   const router = useRouter()
   const { t } = useT()
-  return async (fn: () => Promise<unknown>) => {
+  // `done` confirms the action in a toast once it has gone through.
+  return async (fn: () => Promise<unknown>, done?: string) => {
     try {
       await fn()
       await router.invalidate()
+      if (done) toast.success(done)
       return true
     } catch {
       // Server messages are English and technical; the user gets one plain sentence in their language.
@@ -65,6 +71,8 @@ function Settings() {
   const router = useRouter()
   const run = useRun()
   const { t } = useT()
+  const theme = useTheme()
+  const members = Route.useLoaderData()
   const [account, setAccount] = useState('')
 
   return (
@@ -82,7 +90,7 @@ function Settings() {
           <Segmented
             label={t('language')}
             value={shell.user.locale}
-            onChange={(v) => run(() => setLocale({ data: { locale: v } }))}
+            onChange={(v) => run(() => setLocale({ data: { locale: v } }), translate(v, 'languageChanged'))}
             options={localeCodes.map((code) => ({ value: code, label: <span lang={code}>{locales[code].name}</span> }))}
             className="w-44"
           />
@@ -95,12 +103,26 @@ function Settings() {
           <Segmented
             label={t('weekStarts')}
             value={String(shell.user.weekStart) as '0' | '1'}
-            onChange={(v) => run(() => setWeekStart({ data: { weekStart: v === '1' ? 1 : 0 } }))}
+            onChange={(v) => run(() => setWeekStart({ data: { weekStart: v === '1' ? 1 : 0 } }), t('weekStartChanged', { day: t(v === '1' ? 'monday' : 'sunday') }))}
             options={[
               { value: '0', label: t('sunday') },
               { value: '1', label: t('monday') },
             ]}
             className="w-44"
+          />
+        </Row>
+        {/* Wraps only when a long label leaves no room for the three choices. */}
+        <Row className="flex flex-wrap items-center justify-between gap-3">
+          <span className="flex items-center gap-3">
+            <CircleHalf aria-hidden className="size-5 text-ink-2" />
+            {t('appearance')}
+          </span>
+          <Segmented
+            label={t('appearance')}
+            value={theme}
+            onChange={setTheme}
+            options={themes.map((value) => ({ value, label: t(themeNames[value]) }))}
+            className="w-60"
           />
         </Row>
       </Group>
@@ -117,9 +139,9 @@ function Settings() {
               aria-label={`${t('remove')} ${a.name}`}
               onClick={async () => {
                 if (!(await run(() => archiveBankAccount({ data: { id: a.id } })))) return
-                toast(t('removedName', { name: a.name }), {
+                toast.success(t('removedName', { name: a.name }), {
                   duration: 10000,
-                  action: { label: t('undo'), onClick: () => void run(() => restoreBankAccount({ data: { id: a.id } })) },
+                  action: { label: t('undo'), onClick: () => void run(() => restoreBankAccount({ data: { id: a.id } }), t('restoredName', { name: a.name })) },
                 })
               }}
               className="-mr-2 grid size-11 place-items-center rounded-sm text-ink-2 hover:bg-plate hover:text-ink"
@@ -133,7 +155,7 @@ function Settings() {
             className="flex gap-2"
             onSubmit={async (e) => {
               e.preventDefault()
-              if (account.trim() && (await run(() => addBankAccount({ data: { name: account } })))) setAccount('')
+              if (account.trim() && (await run(() => addBankAccount({ data: { name: account } }), t('nameAdded', { name: account.trim() })))) setAccount('')
             }}
           >
             <Input value={account} onChange={(e) => setAccount(e.target.value)} placeholder={t('addAccount')} maxLength={40} aria-label={t('addAccount')} />
@@ -145,6 +167,8 @@ function Settings() {
       </Group>
 
       <Pockets />
+
+      {members && <Members data={members} />}
 
       <Button
         variant="outline"
@@ -163,6 +187,107 @@ function Settings() {
 }
 
 type Field = 'name' | 'email' | 'password'
+
+/** Copies text, also over plain http on a home network, where the browser keeps the clipboard API off. Says whether it worked. */
+async function copyText(text: string) {
+  if (window.isSecureContext && navigator.clipboard) return navigator.clipboard.writeText(text).then(() => true, () => false)
+  const field = document.createElement('textarea')
+  field.value = text
+  field.style.cssText = 'position:fixed;opacity:0'
+  document.body.append(field)
+  field.select()
+  const copied = document.execCommand('copy')
+  field.remove()
+  return copied
+}
+
+/** The admin's list: everyone on the instance, invites still waiting, and a way to make one (ADR 0002). */
+function Members({ data }: { data: NonNullable<Awaited<ReturnType<typeof getMembers>>> }) {
+  const run = useRun()
+  const { t, day } = useT()
+  const [name, setName] = useState('')
+  const copy = async (code: string) => {
+    if (await copyText(`${location.origin}/signup?invite=${code}`)) toast.success(t('linkCopied'))
+    // The code still works when read out or typed, so the failure hands it over.
+    else toast.error(t('copyFailed', { code }))
+  }
+
+  return (
+    <Group title={t('everyone')}>
+      {data.members.map((m) => (
+        <Row key={m.id} className="flex items-center gap-3">
+          <Avatar name={m.name} />
+          <span className="grid min-w-0 flex-1">
+            <span className="truncate">{m.name}</span>
+            <span className="truncate text-[13px] text-ink-2">{m.email}</span>
+          </span>
+          {m.id === data.admin && <span className="caps shrink-0 text-[12px] text-ink-2">{t('admin')}</span>}
+        </Row>
+      ))}
+      {data.pending.map((i) => (
+        <Row key={i.id} className="flex items-center gap-3">
+          <Ticket aria-hidden className="size-7 shrink-0 p-1 text-ink-2" />
+          <span className="grid min-w-0 flex-1">
+            <span className="truncate">{i.name || t('inviteUnnamed')}</span>
+            {/* Wraps rather than cut the date off on a phone, where Copy link and revoke take the width. */}
+            <span className="text-[13px] text-ink-2">
+              <span className="font-board font-medium text-ink">{i.code}</span> ·{' '}
+              <span className="whitespace-nowrap">{t('inviteUntil', { date: day(i.until) })}</span>
+            </span>
+          </span>
+          <Button variant="ghost" size="sm" className="h-11 lg:h-9" onClick={() => void copy(i.code)}>
+            {t('copyLink')}
+          </Button>
+          <button
+            type="button"
+            aria-label={t('revokeInvite', { name: i.name || i.code })}
+            onClick={async () => {
+              const out: { gone?: Awaited<ReturnType<typeof revokeInvite>> } = {}
+              if (!(await run(async () => void (out.gone = await revokeInvite({ data: { id: i.id } }))))) return
+              const back = out.gone
+              requestAnimationFrame(() => document.getElementById('invite-name')?.focus())
+              // Like every removal, a revoke can be undone: the same code comes back.
+              toast.success(t('inviteRevoked'), {
+                duration: 10000,
+                action: back
+                  ? { label: t('undo'), onClick: () => void run(() => restoreInvite({ data: back }), t('restoredName', { name: i.name || i.code })) }
+                  : undefined,
+              })
+            }}
+            className="-mr-3 grid size-11 shrink-0 place-items-center text-ink-2 transition-colors hover:text-ink"
+          >
+            <X weight="bold" className="size-4" />
+          </button>
+        </Row>
+      ))}
+      <Row className="grid gap-2">
+        <form
+          className="flex gap-2"
+          onSubmit={async (e) => {
+            e.preventDefault()
+            let code = ''
+            const made = await run(async () => {
+              code = (await createInvite({ data: { name } })).code
+            })
+            if (!made) return
+            setName('')
+            toast.success(t('inviteReady', { code }), { action: { label: t('copyLink'), onClick: () => void copy(code) } })
+          }}
+        >
+          <Label htmlFor="invite-name" className="sr-only">
+            {t('inviteFor')}
+          </Label>
+          <Input id="invite-name" placeholder={t('inviteFor')} maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />
+          <Button type="submit" variant="outline" className="shrink-0">
+            <Plus aria-hidden weight="bold" />
+            {t('makeInvite')}
+          </Button>
+        </form>
+        <p className="text-[13px] text-ink-2">{t('invitesHint')}</p>
+      </Row>
+    </Group>
+  )
+}
 
 /** Name, email and password as ruled rows; EDIT opens one row at a time into its form. */
 function Profile() {
@@ -185,6 +310,7 @@ function Profile() {
         onSave={async (form) => {
           await renameUser({ data: { name: String(form.get('name')) } })
           await done()
+          toast.success(t('nameChanged'))
         }}
       >
         <Input name="name" defaultValue={shell.user.name} required maxLength={40} autoComplete="name" aria-label={t('name')} autoFocus />
@@ -198,6 +324,7 @@ function Profile() {
           const { taken } = await changeEmail({ data: { email: String(form.get('email')) } })
           if (taken) return t('emailTaken')
           await done()
+          toast.success(t('emailChanged'))
         }}
       >
         <Input name="email" type="email" defaultValue={shell.user.email} required autoComplete="email" aria-label={t('email')} autoFocus />
@@ -212,9 +339,10 @@ function Profile() {
             newPassword: String(form.get('new')),
             revokeOtherSessions: true,
           })
-          if (res.error) return res.error.code === 'INVALID_PASSWORD' ? t('wrongPassword') : res.error.message || t('somethingWrong')
+          // Plain sentences in the member's language, never the server's own message.
+          if (res.error) return res.error.code === 'INVALID_PASSWORD' ? t('wrongPassword') : res.error.code === 'PASSWORD_TOO_SHORT' ? t('passwordShort') : t('somethingWrong')
           setOpen(null)
-          toast(t('passwordChanged'))
+          toast.success(t('passwordChanged'))
         }}
       >
         {/* Lets password managers file the new password under this account. */}
@@ -385,9 +513,10 @@ function Pockets() {
 
   return (
     <Group title={t('pockets')}>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-4 pt-3">
+      {/* Room above the first row for a pulled, tilted card. */}
+      <div className="grid grid-cols-2 gap-x-3 gap-y-5 pt-5">
         {shell.pockets.map((p) => (
-          <PocketTile key={p.id} color={pocketBg(p.color)} onClick={() => setOpenId(p.id)}>
+          <PocketTile key={p.id} color={pocketBg(p.color)} mark={initials(p.name)} onClick={() => setOpenId(p.id)}>
             <span className="caps truncate text-[17px]">{p.name}</span>
             <span className="caps truncate text-[11px] text-on-board-2">
               {kindLabel(p)}
@@ -440,21 +569,46 @@ function useKindLabel() {
  * A black pocket with a card in the pocket's colour tucked into it; the card slides up on hover.
  * `empty` draws the dashed outline that stands for a pocket not made yet.
  */
-function PocketTile({ color, empty, onClick, children }: { color?: string; empty?: boolean; onClick: () => void; children: ReactNode }) {
+// Each pull tilts the card a little, a new way each time, like tugging a real card out of a pocket.
+function tilt(e: { currentTarget: HTMLElement }) {
+  const deg = (1.5 + Math.random() * 1.5) * (Math.random() < 0.5 ? -1 : 1)
+  e.currentTarget.style.setProperty('--tilt', `${deg.toFixed(2)}deg`)
+}
+
+function PocketTile({
+  color,
+  mark,
+  empty,
+  onClick,
+  children,
+}: {
+  color?: string
+  mark?: string
+  empty?: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
   return (
-    <button type="button" onClick={onClick} className="group relative grid pt-4 text-left">
+    <button type="button" onClick={onClick} onPointerEnter={tilt} onFocus={tilt} className="group relative grid pt-6 text-left">
       <span
         aria-hidden
-        style={color ? { background: color } : undefined}
+        style={color ? { backgroundColor: color } : undefined}
         className={cn(
-          'absolute inset-x-3 top-0 h-10 rounded-t-sm transition-transform duration-200 ease-out group-hover:-translate-y-1.5 group-focus-visible:-translate-y-1.5 motion-reduce:transition-none',
-          empty && 'border-2 border-b-0 border-dashed border-ink-3 group-hover:border-ink',
+          // Taller than it shows, so a tilted card never lifts its bottom corner out of the pocket.
+          'absolute inset-x-3 top-0 h-12 origin-bottom overflow-hidden rounded-t-sm transition-[translate,rotate] duration-200 ease-out group-hover:-translate-y-2.5 group-hover:rotate-(--tilt) group-focus-visible:-translate-y-2.5 group-focus-visible:rotate-(--tilt) motion-reduce:rotate-none! motion-reduce:transition-none',
+          // The empty pocket's card waits inside it, and rises only to show where a new one goes.
+          empty ? 'translate-y-6 border-2 border-b-0 border-dashed border-ink' : 'pocket-card',
         )}
-      />
+      >
+        {/* The pocket's initials, printed into the card a shade darker than its colour. */}
+        {mark && <span className="absolute top-2 left-3.5 font-board text-[28px] leading-none font-semibold tracking-[-0.02em] text-black/20">{mark}</span>}
+      </span>
       <span
         className={cn(
-          'relative grid min-h-24 content-end gap-0.5 rounded-sm px-4 pt-6 pb-3.5',
-          empty ? 'place-items-center border-2 border-dashed border-ink-3 bg-ground text-ink-2 group-hover:border-ink group-hover:text-ink' : 'board',
+          'relative grid min-h-24 gap-0.5 rounded-sm px-4 pb-3.5',
+          empty
+            ? 'content-center justify-items-center pt-3.5 border-2 border-dashed border-ink-3 bg-ground text-ink-2 transition-colors group-hover:border-ink group-hover:text-ink group-focus-visible:border-ink group-focus-visible:text-ink'
+            : 'board content-end pt-6',
         )}
       >
         {/* The pocket's mouth, stitched. */}
@@ -495,7 +649,7 @@ function PocketEditor({ pocket }: { pocket: Shell['pockets'][number] }) {
             className="grid gap-1.5"
             onSubmit={(e) => {
               e.preventDefault()
-              if (name.trim() && name.trim() !== pocket.name) void run(() => updatePocket({ data: { pocketId: pocket.id, name, color: pocket.color as PocketColor } }))
+              if (name.trim() && name.trim() !== pocket.name) void run(() => updatePocket({ data: { pocketId: pocket.id, name, color: pocket.color as PocketColor } }), t('savedChanges'))
             }}
           >
             <Label htmlFor="pocket-name">{t('name')}</Label>
@@ -508,7 +662,7 @@ function PocketEditor({ pocket }: { pocket: Shell['pockets'][number] }) {
           </form>
           <div className="grid gap-1.5">
             <span aria-hidden className="caps text-[12px] text-ink-2">{t('color')}</span>
-            <ColorPicker value={pocket.color} onChange={(c) => run(() => updatePocket({ data: { pocketId: pocket.id, name: pocket.name, color: c } }))} />
+            <ColorPicker value={pocket.color} onChange={(c) => run(() => updatePocket({ data: { pocketId: pocket.id, name: pocket.name, color: c } }), t('savedChanges'))} />
           </div>
         </>
       )}
@@ -530,7 +684,7 @@ function PocketEditor({ pocket }: { pocket: Shell['pockets'][number] }) {
                     <Button variant="secondary" onClick={() => setRemoving(null)}>
                       {t('cancel')}
                     </Button>
-                    <Button variant="destructive" onClick={() => run(() => removeMember({ data: { pocketId: pocket.id, userId: m.id } }))}>
+                    <Button variant="destructive" onClick={() => run(() => removeMember({ data: { pocketId: pocket.id, userId: m.id } }), t('memberRemoved', { name: m.name, pocket: pocket.name }))}>
                       {t('remove')}
                     </Button>
                   </div>
@@ -568,8 +722,9 @@ function PocketEditor({ pocket }: { pocket: Shell['pockets'][number] }) {
                     res = await addMember({ data: { pocketId: pocket.id, email } })
                   })
                   if (!ok) return
-                  if (res.found) setEmail('')
-                  else setInviteError(t('noAccountWithEmail'))
+                  if (!res.found) return setInviteError(t('noAccountWithEmail'))
+                  toast.success(t('memberAdded', { email, pocket: pocket.name }))
+                  setEmail('')
                 }}
               >
                 <Input
@@ -605,7 +760,7 @@ function PocketEditor({ pocket }: { pocket: Shell['pockets'][number] }) {
                 <Button variant="secondary" onClick={() => setLeaving(false)}>
                   {t('cancel')}
                 </Button>
-                <Button variant="destructive" onClick={() => run(() => leavePocket({ data: { pocketId: pocket.id } }))}>
+                <Button variant="destructive" onClick={() => run(() => leavePocket({ data: { pocketId: pocket.id } }), t('pocketLeft', { name: pocket.name }))}>
                   {t('leave')}
                 </Button>
               </div>
@@ -625,7 +780,7 @@ function PocketEditor({ pocket }: { pocket: Shell['pockets'][number] }) {
               <Button variant="secondary" onClick={() => setConfirming(false)}>
                 {t('cancel')}
               </Button>
-              <Button variant="destructive" onClick={() => run(() => deletePocket({ data: { pocketId: pocket.id } }))}>
+              <Button variant="destructive" onClick={() => run(() => deletePocket({ data: { pocketId: pocket.id } }), t('nameDeleted', { name: pocket.name }))}>
                 {t('deletePocket')}
               </Button>
             </div>
@@ -646,7 +801,6 @@ function PocketCurrency({ pocket }: { pocket: Shell['pockets'][number] }) {
   const [next, setNext] = useState<string | null>(null)
   const from = useMoney(pocket.currency)
   const to = useMoney(next ?? pocket.currency)
-  const names = new Intl.DisplayNames([locales[locale].tag], { type: 'currency' })
   return (
     <div className="grid gap-3">
       <div className="flex items-center justify-between gap-3">
@@ -658,7 +812,8 @@ function PocketCurrency({ pocket }: { pocket: Shell['pockets'][number] }) {
           label={t('currency')}
           disabled={pocket.role !== 'owner'}
           value={pocket.currency}
-          options={currencies.map((c) => ({ value: c, label: <span className="truncate">{`${c} · ${names.of(c)}`}</span> }))}
+          options={currencyOptions(locales[locale].tag)}
+          search={{ placeholder: t('searchCurrency'), empty: t('noCurrency') }}
           display={pocket.currency}
           onChange={(c) => setNext(c === pocket.currency ? null : c)}
           className={cn(pickerClass, 'shrink-0')}
@@ -674,7 +829,7 @@ function PocketCurrency({ pocket }: { pocket: Shell['pockets'][number] }) {
             <Button variant="secondary" onClick={() => setNext(null)}>
               {t('cancel')}
             </Button>
-            <Button onClick={async () => (await run(() => setPocketCurrency({ data: { pocketId: pocket.id, currency: next } }))) && setNext(null)}>
+            <Button onClick={async () => (await run(() => setPocketCurrency({ data: { pocketId: pocket.id, currency: next } }), t('currencyChanged', { currency: next }))) && setNext(null)}>
               {t('changeCurrency')}
             </Button>
           </div>
@@ -697,7 +852,7 @@ function NewPocket({ onDone }: { onDone: () => void }) {
       className="grid gap-5"
       onSubmit={async (e) => {
         e.preventDefault()
-        if (name.trim() && (await run(() => createPocket({ data: { name, color, cycleStartDay: startDay } })))) onDone()
+        if (name.trim() && (await run(() => createPocket({ data: { name, color, cycleStartDay: startDay } }), t('pocketCreated', { name: name.trim() })))) onDone()
       }}
     >
       <DialogTitle>{t('newPocket')}</DialogTitle>

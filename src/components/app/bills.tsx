@@ -42,13 +42,18 @@ function usePayBill() {
     try {
       const { id } = await payBill({ data: { id: b.id, dueOn: b.due! } })
       await router.invalidate()
-      toast(t('paidBill', { name: b.name, amount: money(b.amount) }), {
+      toast.success(t('paidBill', { name: b.name, amount: money(b.amount) }), {
         duration: 10000,
         action: {
           label: t('undo'),
           onClick: async () => {
-            await deleteEntry({ data: { id } })
-            await router.invalidate()
+            try {
+              await deleteEntry({ data: { id } })
+              await router.invalidate()
+              toast.success(t('paymentUndone'))
+            } catch {
+              toast.error(t('somethingWrong'))
+            }
           },
         },
       })
@@ -122,6 +127,7 @@ export function BillRows({ bills, today, onEdit }: { bills: Bill[]; today: strin
                         await skipBill({ data: { id: picked.id, dueOn: picked.due! } })
                         setPicked(null)
                         await router.invalidate()
+                        toast.success(t(picked.state === 'skipped' ? 'billUnskipped' : 'skippedBill', { name: picked.name }))
                       } catch {
                         toast.error(t('somethingWrong'))
                       }

@@ -68,12 +68,12 @@ You need a machine with Docker and the Compose plugin (`docker compose`). You do
 
    On first start the app creates its auth secret, then sets up the database.
 
-5. Each member opens `http://<server address>:3000`, with the address from step 2, and creates an account. Each new account gets a personal pocket in `DEFAULT_CURRENCY`, with starter categories and bank accounts.
+5. Open `http://<server address>:3000`, with the address from step 2, and create the first account. The first account is the **admin**. Setup then asks for your currency (starting on `DEFAULT_CURRENCY`), payday, categories and bank accounts, and makes your personal pocket. Do this before you share the address.
 
-6. When everyone has an account, close signup: set `ALLOW_SIGNUP: "false"` in `docker-compose.yml` and run `docker compose up -d` again.
+6. Invite the others: in **Settings → Members of this Pao**, type a name and choose **Invite**. Send the link, or read out the code. Each invite works once, for 7 days. Each member signs up with it and goes through their own Setup.
 
 > [!WARNING]
-> While `ALLOW_SIGNUP` is `"true"`, anyone who can open your instance can create an account. If it is reachable from the internet, strangers can sign up. Set it to `"false"` before you expose Pao.
+> If you set `ALLOW_SIGNUP` to `"true"`, anyone who can open your instance can create an account, without an invite. If it is reachable from the internet, strangers can sign up. Keep it `"false"` before you expose Pao.
 
 ## Settings
 
@@ -81,9 +81,9 @@ Every setting lives in `docker-compose.yml`, under the `app` service. After you 
 
 | Setting | Shipped value | What it does |
 | --- | --- | --- |
-| `DEFAULT_CURRENCY` | `USD` | The currency of each new member's personal pocket, as an ISO 4217 code such as `THB`, `EUR` or `JPY`. A new shared pocket starts in its creator's personal-pocket currency. Any pocket can switch currency in its settings: its amounts are relabelled, never converted. Unset or unknown means `USD`. |
+| `DEFAULT_CURRENCY` | `USD` | The currency Setup suggests for each new member's personal pocket, as an ISO 4217 code such as `THB`, `EUR` or `JPY`. A new shared pocket starts in its creator's personal-pocket currency. Any pocket can switch currency in its settings: its amounts are relabelled, never converted. Unset or unknown means `USD`. |
 | `APP_TZ` | `UTC` | The household's time zone, as a [tz database name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) such as `Europe/London`. "Today" and daily limits turn over at midnight there. Unset means `UTC`. |
-| `ALLOW_SIGNUP` | `"true"` | `"false"` closes signup. Existing members can still sign in. |
+| `ALLOW_SIGNUP` | `"false"` | `"false"`: sign-up by invite from the admin (the first account). `"true"`: anyone can sign up, and invites still work. Unset means `"false"`. |
 | `BETTER_AUTH_URL` | not set | Needed only behind an HTTPS reverse proxy: the public address, such as `https://pao.example.com`. Sign-in cookies are then `Secure`, and sign-in from any other address is refused. Leave it unset at home. |
 | Port | `3000` | The left number in `"3000:3000"` under the app's `ports`. |
 
@@ -108,7 +108,7 @@ Then put the same password in `POSTGRES_PASSWORD` and in `DATABASE_URL` in `dock
 
 Pao serves plain `http`. Before members use it outside your home network, put it behind an HTTPS reverse proxy, such as Caddy, nginx or Traefik, that forwards to port 3000 on the server.
 
-1. Close signup first (see the warning above).
+1. Keep sign-up by invite (`ALLOW_SIGNUP: "false"`, see the warning above).
 2. Set `BETTER_AUTH_URL` to the public address, for example `https://pao.example.com`, and run `docker compose up -d`. Without it, sign-in behind the proxy is refused.
 
 From then on, members sign in only at that address.

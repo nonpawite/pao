@@ -1,49 +1,83 @@
-import { db } from '../db/index.ts'
-import { bankAccount, category, pocket, pocketMember } from '../db/schema.ts'
-import { translate } from '../lib/i18n.ts'
-import type { Locale, MessageKey } from '../lib/i18n.ts'
-import { defaultCurrency } from '../lib/money.ts'
+import { createServerFn } from '@tanstack/react-start'
+import { and, eq } from 'drizzle-orm'
+import { z } from 'zod'
 
-// Owner's example limits: Food 200/day, Gas 3,000 and Travel 1,000 per cycle. Others start without a limit.
-const defaultLimits: Array<['day' | 'cycle' | 'none', number]> = [
-  ['day', 20_000],
-  ['cycle', 300_000],
-  ['cycle', 100_000],
-  ['none', 0],
-  ['none', 0],
-  ['none', 0],
-  ['none', 0],
-]
+import { db } from '#/db/index'
+import { bankAccount, category, pocket, pocketMember, user } from '#/db/schema'
+import { calendarNames, pickLocale, translate } from '#/lib/i18n'
+import type { MessageKey } from '#/lib/i18n'
+import { defaultCurrency, isCurrency, maxAmount } from '#/lib/money'
+import { requireUser, todayISO } from './session'
+
 const starterCategories: MessageKey[] = ['starterFood', 'starterGas', 'starterTravel', 'starterShopping', 'starterBills', 'starterHealth', 'starterFun']
 const starterAccounts: MessageKey[] = ['starterMain', 'starterSaving', 'starterInvestment']
 
-/** Runs once per new user: a personal pocket with starter categories, and three bank accounts. */
-export async function createPersonalSpace(userId: string, locale: Locale) {
+/** What Setup starts from: the member's language, the instance's default currency, and names to suggest. */
+export const getSetup = createServerFn({ method: 'GET' }).handler(async () => {
+  const u = await requireUser()
+  const locale = pickLocale([(u as { locale?: string }).locale ?? ''])
   const t = (key: MessageKey) => translate(locale, key)
-  const names = { pocket: t('starterPocket'), categories: starterCategories.map(t), accounts: starterAccounts.map(t) }
-  await db.transaction(async (tx) => {
-    const [p] = await tx
-      .insert(pocket)
-      // Salary lands at month end, so the cycle starts on the last day by default.
-      .values({
-        name: names.pocket,
-        color: 'teal',
-        kind: 'personal',
-        cycleStartDay: 31,
-        currency: defaultCurrency(process.env.DEFAULT_CURRENCY),
-        createdBy: userId,
-      })
-      .returning({ id: pocket.id })
-    await tx.insert(pocketMember).values({ pocketId: p.id, userId, role: 'owner' })
-    await tx.insert(category).values(
-      names.categories.map((name, i) => ({
-        pocketId: p.id,
-        name,
-        limitType: defaultLimits[i][0],
-        limitAmount: defaultLimits[i][1],
-        sortOrder: i,
-      })),
-    )
-    await tx.insert(bankAccount).values(names.accounts.map((name, i) => ({ userId, name, sortOrder: i })))
+  return {
+    name: u.name,
+    locale,
+    names: calendarNames(locale),
+    today: todayISO(),
+    currency: defaultCurrency(process.env.DEFAULT_CURRENCY),
+    pocketName: t('starterPocket'),
+    categories: starterCategories.map(t),
+    accounts: starterAccounts.map(t),
+  }
+})
+
+const name = z.string().trim().min(1).max(40)
+
+/** Finish: the member's personal pocket, its categories and their bank accounts, all at once or not at all. */
+export const finishSetup = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      currency: z.string().refine(isCurrency, 'Not an ISO 4217 currency code'),
+      cycleStartDay: z.number().int().min(1).max(31),
+      categories: z
+        .array(z.object({ name, limitType: z.enum(['day', 'cycle', 'none']), limitAmount: z.number().int().min(0).max(maxAmount) }))
+        .min(1)
+        .max(50),
+      accounts: z.array(name).max(20),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const u = await requireUser()
+    const locale = pickLocale([(u as { locale?: string }).locale ?? ''])
+    if (data.categories.some((c) => c.limitType !== 'none' && c.limitAmount <= 0)) throw new Error('Set a limit above zero')
+    await db.transaction(async (tx) => {
+      // Locking the member's row queues a second Finish (a double tap, another tab) behind this one, so it finds
+      // the pocket already there and leaves it alone.
+      await tx.select({ id: user.id }).from(user).where(eq(user.id, u.id)).for('update')
+      const [own] = await tx
+        .select({ id: pocket.id })
+        .from(pocket)
+        .where(and(eq(pocket.createdBy, u.id), eq(pocket.kind, 'personal')))
+      if (own) return
+      const [p] = await tx
+        .insert(pocket)
+        .values({
+          name: translate(locale, 'starterPocket'),
+          color: 'teal',
+          kind: 'personal',
+          cycleStartDay: data.cycleStartDay,
+          currency: data.currency,
+          createdBy: u.id,
+        })
+        .returning({ id: pocket.id })
+      await tx.insert(pocketMember).values({ pocketId: p.id, userId: u.id, role: 'owner' })
+      await tx.insert(category).values(
+        data.categories.map((c, i) => ({
+          pocketId: p.id,
+          name: c.name,
+          limitType: c.limitType,
+          limitAmount: c.limitType === 'none' ? 0 : c.limitAmount,
+          sortOrder: i,
+        })),
+      )
+      if (data.accounts.length) await tx.insert(bankAccount).values(data.accounts.map((n, i) => ({ userId: u.id, name: n, sortOrder: i })))
+    })
   })
-}
