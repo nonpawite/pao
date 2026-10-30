@@ -115,7 +115,7 @@ From then on, members sign in only at that address.
 
 ## Upgrade
 
-The compose file uses `ghcr.io/nonpawite/pao:1`. It follows major version 1, so an upgrade brings fixes and features but never a breaking release. Read the [release notes](https://github.com/nonpawite/pao/releases) first: they list any migration that rewrites data.
+The compose file uses `ghcr.io/nonpawite/pao:latest`. It follows the newest release, so an upgrade brings fixes and features, and a breaking release when the major version changes. Read the [release notes](https://github.com/nonpawite/pao/releases) first: they list any migration that rewrites data.
 
 1. Back up the database:
 
@@ -137,7 +137,7 @@ The compose file uses `ghcr.io/nonpawite/pao:1`. It follows major version 1, so 
 
 The app applies database migrations by itself when it starts.
 
-To stay on one release, replace `:1` with an exact version, for example `ghcr.io/nonpawite/pao:1.0.0`. To roll back, set the older version, [restore](#restore) the backup you made before the upgrade, and run `docker compose up -d`.
+To stay on major version 1, replace `:latest` with `:1`. To stay on one release, replace it with an exact version, for example `ghcr.io/nonpawite/pao:1.0.0`. To roll back, set the older version, [restore](#restore) the backup you made before the upgrade, and run `docker compose up -d`.
 
 ## Backups
 

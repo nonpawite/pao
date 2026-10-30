@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Only the latest 1.x release gets security fixes. The shipped compose file uses `ghcr.io/nonpawite/pao:1`, which always points at it.
+Only the latest 1.x release gets security fixes. The shipped compose file uses `ghcr.io/nonpawite/pao:latest`, which always points at the newest release.
 
 | Version        | Supported |
 | -------------- | --------- |
