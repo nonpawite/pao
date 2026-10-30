@@ -23,10 +23,11 @@ services:
       retries: 10
 
   app:
-    # Follows major version 1: `docker compose pull` brings fixes and features, never a breaking
-    # release. Pin an exact version (for example :1.0.0) to stay on one release.
+    # Follows the newest release: `docker compose pull` brings fixes and features, and a breaking
+    # release when the major version changes. Use :1 to stay on major version 1, or an exact
+    # version (for example :1.0.0) to stay on one release.
     # To run your own checkout instead, see docker-compose.build.yml.
-    image: ghcr.io/nonpawite/pao:1
+    image: ghcr.io/nonpawite/pao:latest
     restart: unless-stopped
     depends_on:
       db:
