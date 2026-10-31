@@ -12,6 +12,6 @@ COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production
 COPY --from=build /app/.output ./.output
 COPY drizzle ./drizzle
-COPY scripts/migrate.mjs scripts/start.mjs ./scripts/
+COPY scripts/migrate.mjs scripts/start.mjs scripts/reset-sign-in.mjs ./scripts/
 EXPOSE 3000
 CMD ["bun", "scripts/start.mjs"]

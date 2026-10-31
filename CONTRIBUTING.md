@@ -74,6 +74,13 @@ bun run build
 
 Tests live next to the code in `src/lib/*.test.ts`.
 
+Sign-in tests send real requests through Better Auth against a real Postgres, so they run separately. They add members with random emails and delete nothing, but point them at a database you can throw away:
+
+```sh
+DATABASE_URL=postgresql://tracker:tracker@127.0.0.1:5432/pao_test bun scripts/migrate.mjs
+DATABASE_URL=postgresql://tracker:tracker@127.0.0.1:5432/pao_test bun run test:db
+```
+
 ### Build the Docker image from source
 
 To run your checkout the way self-hosters run the published image, build it with `docker-compose.build.yml`:

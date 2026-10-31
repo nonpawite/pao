@@ -16,9 +16,11 @@
     "db:pull": "bun --bun drizzle-kit pull",
     "db:studio": "bun --bun drizzle-kit studio",
     "test": "bun test src/lib",
+    "test:db": "BETTER_AUTH_URL=https://pao.test ALLOW_SIGNUP=true bun test ./src/server/sign-in.dbtest.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@better-auth/passkey": "^1.7.14",
     "@fontsource-variable/anuphan": "^5.3.0",
     "@fontsource/geist": "^5.3.0",
     "@fontsource/ibm-plex-sans-thai": "^5.3.0",
@@ -28,7 +30,7 @@
     "@tanstack/react-router": "1.170.44",
     "@tanstack/react-router-devtools": "1.167.2",
     "@tanstack/react-start": "1.169.2",
-    "better-auth": "^1.5.3",
+    "better-auth": "^1.7.14",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cn": "^0.4.0",
@@ -43,6 +45,7 @@
     "tailwind-merge": "^3.0.2",
     "tailwindcss": "^4.1.18",
     "tw-animate-css": "^1.3.6",
+    "uqr": "^0.1.3",
     "vaul": "^1.1.2",
     "zod": "^4.6.7"
   },

@@ -3,6 +3,7 @@ import { Bank, CalendarBlank, Check, CircleHalf, Plus, SignOut, Ticket, Translat
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
+import { encode } from 'uqr'
 import { z } from 'zod'
 
 import { pickerClass } from '#/components/app/bill-form'
@@ -15,7 +16,7 @@ import { Button } from '#/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/components/ui/dialog'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
-import { authClient } from '#/lib/auth-client'
+import { authClient, errorCode, passkeysWork } from '#/lib/auth-client'
 import { pocketBg, pocketColors } from '#/lib/colors'
 import type { PocketColor } from '#/lib/colors'
 import { initials, localeCodes, locales, translate } from '#/lib/i18n'
@@ -186,7 +187,7 @@ function Settings() {
   )
 }
 
-type Field = 'name' | 'email' | 'password'
+type Field = 'name' | 'email' | 'password' | 'twoStep' | 'passkeys'
 
 /** Copies text, also over plain http on a home network, where the browser keeps the clipboard API off. Says whether it worked. */
 async function copyText(text: string) {
@@ -350,7 +351,265 @@ function Profile() {
         <Input name="current" type="password" required autoComplete="current-password" placeholder={t('currentPassword')} aria-label={t('currentPassword')} autoFocus />
         <Input name="new" type="password" required minLength={8} maxLength={128} autoComplete="new-password" placeholder={t('newPassword')} aria-label={t('newPassword')} />
       </EditRow>
+      <TwoStepRow {...row('twoStep')} />
+      <PasskeysRow {...row('passkeys')} />
     </>
+  )
+}
+
+type RowProps = { open: boolean; onOpen: () => void; onClose: () => void }
+
+/** Off: password, then QR code and one working code, then the backup codes. On: new backup codes, or turn off. Each asks for the password. */
+function TwoStepRow({ open, onOpen, onClose }: RowProps) {
+  const shell = useShell()
+  const router = useRouter()
+  const { t } = useT()
+  const on = shell.user.twoFactorEnabled
+  const label = t('twoStep')
+  const value = t(on ? 'statusOn' : 'statusOff')
+  const [action, setAction] = useState<'off' | 'new' | null>(null)
+  const [setup, setSetup] = useState<{ uri: string; codes: string[] } | null>(null)
+  // Outlives the row being open: only "I saved these" closes this screen.
+  const [codes, setCodes] = useState<string[] | null>(null)
+  const close = () => {
+    setAction(null)
+    setSetup(null)
+    onClose()
+  }
+  const passwordError = (code?: string) => (code === 'INVALID_PASSWORD' ? t('wrongPassword') : t('somethingWrong'))
+
+  if (codes)
+    return (
+      <Row>
+        <BackupCodes
+          codes={codes}
+          onDone={() => {
+            setCodes(null)
+            close()
+          }}
+        />
+      </Row>
+    )
+
+  if (setup)
+    return (
+      <EditRow
+        key="scan"
+        label={label}
+        value={value}
+        hint={t('twoStepScan')}
+        saveLabel={t('turnOn')}
+        open
+        onOpen={onOpen}
+        onClose={close}
+        onSave={async (form) => {
+          const res = await authClient.twoFactor.verifyTotp({ code: String(form.get('code')).replace(/\s/g, '') })
+          if (res.error) return t('codeWrong')
+          await router.invalidate()
+          toast.success(t('twoStepOnDone'))
+          setCodes(setup.codes)
+          setSetup(null)
+        }}
+      >
+        <QrCode uri={setup.uri} />
+        <CopyKey uri={setup.uri} />
+        <Input name="code" required autoFocus inputMode="numeric" autoComplete="one-time-code" placeholder={t('twoStepCode')} aria-label={t('twoStepCode')} />
+      </EditRow>
+    )
+
+  if (on && open && !action)
+    return (
+      <Row className="grid gap-3">
+        <span className="caps text-[12px] text-ink-2">{label}</span>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={close}>
+            {t('cancel')}
+          </Button>
+          <Button type="button" variant="outline" onClick={() => setAction('new')}>
+            {t('newBackupCodes')}
+          </Button>
+          <Button type="button" variant="outline" className="text-over-text" onClick={() => setAction('off')}>
+            {t('turnOff')}
+          </Button>
+        </div>
+      </Row>
+    )
+
+  return (
+    <EditRow
+      key={action ?? 'start'}
+      label={label}
+      value={value}
+      hint={t(action === 'new' ? 'newBackupCodesHint' : 'twoStepIntro')}
+      saveLabel={t(action === 'off' ? 'turnOff' : action === 'new' ? 'newBackupCodes' : 'turnOn')}
+      open={open}
+      onOpen={onOpen}
+      onClose={close}
+      onSave={async (form) => {
+        const password = String(form.get('current'))
+        if (action === 'off') {
+          const res = await authClient.twoFactor.disable({ password })
+          if (res.error) return passwordError(res.error.code)
+          await router.invalidate()
+          close()
+          toast.success(t('twoStepOffDone'))
+        } else if (action === 'new') {
+          const res = await authClient.twoFactor.generateBackupCodes({ password })
+          if (res.error) return passwordError(res.error.code)
+          setCodes(res.data.backupCodes)
+        } else {
+          const res = await authClient.twoFactor.enable({ password })
+          if (res.error) return passwordError(res.error.code)
+          if (res.data.method !== 'totp') return t('somethingWrong')
+          setSetup({ uri: res.data.totpURI, codes: res.data.backupCodes })
+        }
+      }}
+    >
+      {/* Lets password managers file the password under this account. */}
+      <input hidden readOnly name="username" autoComplete="username" value={shell.user.email} />
+      <Input name="current" type="password" required autoFocus autoComplete="current-password" placeholder={t('currentPassword')} aria-label={t('currentPassword')} />
+    </EditRow>
+  )
+}
+
+/** Drawn here, never by an outside service: the address holds the member's secret. Black on white in every theme, or scanners fail. */
+function QrCode({ uri }: { uri: string }) {
+  const { t } = useT()
+  const { size, data } = encode(uri, { border: 2 })
+  const dark = data.flatMap((row, y) => row.flatMap((cell, x) => (cell ? [`M${x} ${y}h1v1h-1z`] : []))).join('')
+  return (
+    <svg role="img" aria-label={t('qrLabel')} viewBox={`0 0 ${size} ${size}`} shapeRendering="crispEdges" className="size-48 bg-white">
+      <path d={dark} fill="#000" />
+    </svg>
+  )
+}
+
+/** For setting up on the same phone that shows the QR code. */
+function CopyKey({ uri }: { uri: string }) {
+  const { t } = useT()
+  const key = new URL(uri).searchParams.get('secret') ?? ''
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      className="justify-self-start"
+      onClick={async () => {
+        if (await copyText(key)) toast.success(t('keyCopied'))
+        // The key still works when typed, so the failure hands it over.
+        else toast.error(t('copyKeyFailed', { key }))
+      }}
+    >
+      {t('copyKey')}
+    </Button>
+  )
+}
+
+function BackupCodes({ codes, onDone }: { codes: string[]; onDone: () => void }) {
+  const { t } = useT()
+  return (
+    <div className="grid gap-3">
+      <span className="caps text-[12px] text-ink-2">{t('backupCodes')}</span>
+      <p className="text-[13px] text-ink-2">{t('backupCodesHint')}</p>
+      <ul className="font-board grid grid-cols-2 gap-x-4 gap-y-1 font-medium">
+        {codes.map((code) => (
+          <li key={code}>{code}</li>
+        ))}
+      </ul>
+      <div className="flex justify-end gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={async () => {
+            if (await copyText(codes.join('\n'))) toast.success(t('codesCopied'))
+            else toast.error(t('copyCodesFailed'))
+          }}
+        >
+          {t('copyCodes')}
+        </Button>
+        <Button type="button" onClick={onDone}>
+          {t('savedCodes')}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function PasskeysRow({ open, onOpen, onClose }: RowProps) {
+  const router = useRouter()
+  const { t } = useT()
+  const { data: passkeys } = authClient.useListPasskeys()
+  // Null until hydration, so a page on HTTPS never flashes the note.
+  const [works, setWorks] = useState<boolean | null>(null)
+  useEffect(() => setWorks(passkeysWork()), [])
+  const [stale, setStale] = useState(false)
+  const label = t('passkeys')
+
+  if (works === false)
+    return (
+      <Row className="flex items-center gap-3">
+        <span className="caps w-24 shrink-0 text-[12px] text-ink-2">{label}</span>
+        <span className="min-w-0 flex-1 text-[13px] text-ink-2">{t('passkeysNeedHttps')}</span>
+      </Row>
+    )
+
+  return (
+    <EditRow
+      label={label}
+      value={passkeys?.length ? passkeys.map((p) => p.name).join(', ') : t('passkeysNone')}
+      hint={t('passkeyIntro')}
+      saveLabel={t('addPasskey')}
+      open={open}
+      onOpen={onOpen}
+      onClose={onClose}
+      onSave={async (form) => {
+        const name = String(form.get('name')).trim()
+        const res = await authClient.passkey.addPasskey({ name })
+        if (!res?.error) {
+          onClose()
+          toast.success(t('nameAdded', { name }))
+          return
+        }
+        const code = errorCode(res.error)
+        if (code === 'SESSION_NOT_FRESH') {
+          setStale(true)
+          return t('passkeyStale')
+        }
+        if (code === 'PASSKEY_NOT_VERIFIED') return t('passkeyNotVerified')
+        return t(code === 'ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED' ? 'passkeyDuplicate' : 'passkeyNotAdded')
+      }}
+    >
+      {passkeys?.map((p) => (
+        <span key={p.id} className="flex items-center justify-between gap-3">
+          <span className="min-w-0 truncate">{p.name}</span>
+          <button
+            type="button"
+            aria-label={`${t('remove')} ${p.name}`}
+            onClick={async () => {
+              const res = await authClient.passkey.deletePasskey({ id: p.id })
+              if (res.error) toast.error(t('somethingWrong'))
+              else toast.success(t('removedName', { name: p.name ?? '' }))
+            }}
+            className="-mr-2 grid size-11 shrink-0 place-items-center rounded-sm text-ink-2 hover:bg-plate hover:text-ink"
+          >
+            <X className="size-4" weight="bold" />
+          </button>
+        </span>
+      ))}
+      <Input name="name" required maxLength={40} autoFocus placeholder={t('passkeyName')} aria-label={t('passkeyName')} />
+      {stale && (
+        <Button
+          type="button"
+          variant="outline"
+          className="justify-self-start"
+          onClick={async () => {
+            await authClient.signOut()
+            await router.navigate({ to: '/login' })
+          }}
+        >
+          {t('signOut')}
+        </Button>
+      )}
+    </EditRow>
   )
 }
 
@@ -358,6 +617,7 @@ function EditRow({
   label,
   value,
   hint,
+  saveLabel,
   open,
   onOpen,
   onClose,
@@ -367,6 +627,7 @@ function EditRow({
   label: string
   value: ReactNode
   hint?: string
+  saveLabel?: string
   open: boolean
   onOpen: () => void
   onClose: () => void
@@ -386,7 +647,7 @@ function EditRow({
   if (open)
     return (
       <Row>
-        <EditForm label={label} hint={hint} onClose={onClose} onSave={onSave}>
+        <EditForm label={label} hint={hint} saveLabel={saveLabel} onClose={onClose} onSave={onSave}>
           {children}
         </EditForm>
       </Row>
@@ -411,12 +672,14 @@ function EditRow({
 function EditForm({
   label,
   hint,
+  saveLabel,
   onClose,
   onSave,
   children,
 }: {
   label: string
   hint?: string
+  saveLabel?: string
   onClose: () => void
   onSave: (form: FormData) => Promise<string | void>
   children: ReactNode
@@ -460,7 +723,7 @@ function EditForm({
           {t('cancel')}
         </Button>
         <Button type="submit" disabled={busy}>
-          {t('save')}
+          {saveLabel ?? t('save')}
         </Button>
       </div>
     </form>

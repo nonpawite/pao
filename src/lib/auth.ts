@@ -1,12 +1,15 @@
+import { passkey } from '@better-auth/passkey'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { APIError, createAuthMiddleware } from 'better-auth/api'
+import { twoFactor } from 'better-auth/plugins'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
-import { and, count, eq, gt, isNull } from 'drizzle-orm'
+import { and, count, eq, gt, isNull, ne } from 'drizzle-orm'
 
 import { db } from '../db/index.ts'
 import * as schema from '../db/schema.ts'
 import { normalizeInviteCode, signupGate } from './invites.ts'
+import { requireVerifiedPerson } from './sign-in.ts'
 
 /** ALLOW_SIGNUP "true" lets anyone sign up; anything else, unset included, means sign-up by invite (ADR 0002). */
 export const signupOpen = () => process.env.ALLOW_SIGNUP === 'true'
@@ -63,11 +66,30 @@ export const auth = betterAuth({
           if (id) await db.update(schema.invite).set({ usedBy: user.id }).where(eq(schema.invite.id, id))
         },
       },
+      update: {
+        // The user row only changes on this path when setup finishes: a session someone else holds stops working right away.
+        after: async (user, ctx) => {
+          const current = ctx?.context.session?.session.token
+          if (ctx?.path !== '/two-factor/verify-totp' || !current) return
+          await db.delete(schema.session).where(and(eq(schema.session.userId, user.id), ne(schema.session.token, current)))
+        },
+      },
     },
   },
   advanced: {
     // Browsers drop Secure cookies over plain http (http://<LAN IP>:3000), so only an HTTPS address gets them.
     useSecureCookies: process.env.BETTER_AUTH_URL?.startsWith('https://') ?? false,
   },
-  plugins: [tanstackStartCookies()],
+  plugins: [
+    twoFactor({ issuer: 'Pao' }),
+    passkey({
+      rpName: 'Pao',
+      // The login page asks for no email, so the device must be able to find the passkey by itself.
+      authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
+      registration: { afterVerification: ({ verification }) => requireVerifiedPerson(!!verification.registrationInfo?.userVerified) },
+      // The package itself accepts a passkey the device didn't unlock; this runs before the session is created.
+      authentication: { afterVerification: ({ verification }) => requireVerifiedPerson(verification.authenticationInfo.userVerified) },
+    }),
+    tanstackStartCookies(),
+  ],
 })

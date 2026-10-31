@@ -27,3 +27,15 @@ _Avoid_: Owner (a pocket role), superuser, self-hoster (the person with server a
 **Invite**:
 A one-time code (and a link that carries it) an admin creates so one person can sign up, including while sign-up is closed. It works for 7 days.
 _Avoid_: Invitation, referral
+
+**Passkey**:
+A complete way to sign in, with no password or code, that a member unlocks on their own device by fingerprint, face or device PIN. A member can have several, one per device, each with a name they choose. Passkeys need an HTTPS address.
+_Avoid_: Fingerprint, biometrics
+
+**Two-step sign-in**:
+An extra check after the password: a 6-digit code from an authenticator app. Each member turns it on for themselves.
+_Avoid_: MFA, 2FA, two-factor
+
+**Backup code**:
+A one-time code a member saves when they turn on two-step sign-in, typed in place of the 6-digit code when they don't have their phone.
+_Avoid_: Recovery code
