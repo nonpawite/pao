@@ -128,7 +128,7 @@ test('turning on two-step sign-in signs out other devices and keeps this one', a
   assert.equal(await member.phone.signedIn(), true)
 })
 
-test('setup left unfinished keeps two-step sign-in off', async () => {
+test('turning on left unfinished keeps two-step sign-in off', async () => {
   const member = await newMember()
   await member.phone.post('/two-factor/enable', { password })
   const { on } = await member.signIn()
@@ -266,4 +266,18 @@ test('a passkey that did not verify the person is refused, with no session', asy
   const res = await signInWith(on, false)
   assert.equal(res.data.code, 'PASSKEY_NOT_VERIFIED')
   assert.equal(await on.signedIn(), false)
+})
+
+test('no device can ask to skip the second step next time', async () => {
+  const member = await memberWithTwoStep()
+  const { on } = await member.signIn()
+  const asked = await on.post('/two-factor/verify-totp', { code: appCode(member.totpURI), trustDevice: true })
+  assert.equal(asked.status, 400)
+  assert.equal(await on.signedIn(), false)
+  const backup = await on.post('/two-factor/verify-backup-code', { code: member.backupCodes[0], trustDevice: true })
+  assert.equal(backup.status, 400)
+  // Refused without using the code up.
+  await on.post('/two-factor/verify-backup-code', { code: member.backupCodes[0] })
+  assert.equal(await on.signedIn(), true)
+  assert.equal((await on.post('/sign-in/email', { email: member.email, password })).data.twoFactorRedirect, true)
 })

@@ -42,6 +42,8 @@ export const auth = betterAuth({
     // Refuses a sign-up without a working invite before Better Auth looks the email up, so the answer never tells an
     // outsider whether an email already has an account. Only checks; the create hook claims.
     before: createAuthMiddleware(async (ctx) => {
+      // Better Auth skips the second step on a device that asks it to; Pao offers no such thing, so any client asking is refused.
+      if (ctx.path.startsWith('/two-factor/verify-') && ctx.body?.trustDevice) throw new APIError('BAD_REQUEST', { message: 'Pao does not trust devices.', code: 'TRUST_DEVICE_OFF' })
       if (ctx.path !== '/sign-up/email' || !(await needsInvite())) return
       const code = inviteFrom(ctx.headers)
       const [found] = code ? await db.select({ id: schema.invite.id }).from(schema.invite).where(live(code)) : []
@@ -67,7 +69,7 @@ export const auth = betterAuth({
         },
       },
       update: {
-        // The user row only changes on this path when setup finishes: a session someone else holds stops working right away.
+        // The user row only changes on this path when two-step sign-in turns on: a session someone else holds stops working right away.
         after: async (user, ctx) => {
           const current = ctx?.context.session?.session.token
           if (ctx?.path !== '/two-factor/verify-totp' || !current) return

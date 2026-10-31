@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
+import { createFileRoute, useBlocker, useNavigate, useRouter } from '@tanstack/react-router'
 import { Bank, CalendarBlank, Check, CircleHalf, Plus, SignOut, Ticket, Translate, X } from '@phosphor-icons/react'
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -364,19 +364,21 @@ function TwoStepRow({ open, onOpen, onClose }: RowProps) {
   const shell = useShell()
   const router = useRouter()
   const { t } = useT()
-  const on = shell.user.twoFactorEnabled
+  const on = shell.user.twoStepOn
   const label = t('twoStep')
   const value = t(on ? 'statusOn' : 'statusOff')
   const [action, setAction] = useState<'off' | 'new' | null>(null)
-  const [setup, setSetup] = useState<{ uri: string; codes: string[] } | null>(null)
+  const [scan, setScan] = useState<{ uri: string; codes: string[] } | null>(null)
   // Outlives the row being open: only "I saved these" closes this screen.
   const [codes, setCodes] = useState<string[] | null>(null)
+  useBlocker({ shouldBlockFn: () => !window.confirm(t('leaveCodes')), disabled: !codes, enableBeforeUnload: !!codes })
   const close = () => {
     setAction(null)
-    setSetup(null)
+    setScan(null)
     onClose()
   }
-  const passwordError = (code?: string) => (code === 'INVALID_PASSWORD' ? t('wrongPassword') : t('somethingWrong'))
+  const passwordError = (error: { code?: string; status: number }) =>
+    t(error.status === 429 ? 'tooManyTries' : error.code === 'INVALID_PASSWORD' ? 'wrongPassword' : 'somethingWrong')
 
   if (codes)
     return (
@@ -391,7 +393,7 @@ function TwoStepRow({ open, onOpen, onClose }: RowProps) {
       </Row>
     )
 
-  if (setup)
+  if (scan)
     return (
       <EditRow
         key="scan"
@@ -404,15 +406,15 @@ function TwoStepRow({ open, onOpen, onClose }: RowProps) {
         onClose={close}
         onSave={async (form) => {
           const res = await authClient.twoFactor.verifyTotp({ code: String(form.get('code')).replace(/\s/g, '') })
-          if (res.error) return t('codeWrong')
+          if (res.error) return t(res.error.status === 429 ? 'tooManyTries' : 'codeWrong')
           await router.invalidate()
           toast.success(t('twoStepOnDone'))
-          setCodes(setup.codes)
-          setSetup(null)
+          setCodes(scan.codes)
+          setScan(null)
         }}
       >
-        <QrCode uri={setup.uri} />
-        <CopyKey uri={setup.uri} />
+        <QrCode uri={scan.uri} />
+        <CopyKey uri={scan.uri} />
         <Input name="code" required autoFocus inputMode="numeric" autoComplete="one-time-code" placeholder={t('twoStepCode')} aria-label={t('twoStepCode')} />
       </EditRow>
     )
@@ -449,19 +451,20 @@ function TwoStepRow({ open, onOpen, onClose }: RowProps) {
         const password = String(form.get('current'))
         if (action === 'off') {
           const res = await authClient.twoFactor.disable({ password })
-          if (res.error) return passwordError(res.error.code)
+          if (res.error) return passwordError(res.error)
           await router.invalidate()
           close()
           toast.success(t('twoStepOffDone'))
         } else if (action === 'new') {
           const res = await authClient.twoFactor.generateBackupCodes({ password })
-          if (res.error) return passwordError(res.error.code)
+          if (res.error) return passwordError(res.error)
+          toast.success(t('newCodesDone'))
           setCodes(res.data.backupCodes)
         } else {
           const res = await authClient.twoFactor.enable({ password })
-          if (res.error) return passwordError(res.error.code)
+          if (res.error) return passwordError(res.error)
           if (res.data.method !== 'totp') return t('somethingWrong')
-          setSetup({ uri: res.data.totpURI, codes: res.data.backupCodes })
+          setScan({ uri: res.data.totpURI, codes: res.data.backupCodes })
         }
       }}
     >
@@ -542,6 +545,8 @@ function PasskeysRow({ open, onOpen, onClose }: RowProps) {
   const [works, setWorks] = useState<boolean | null>(null)
   useEffect(() => setWorks(passkeysWork()), [])
   const [stale, setStale] = useState(false)
+  // A passkey can't come back once removed, so removing asks first rather than offering Undo.
+  const [removing, setRemoving] = useState<string | null>(null)
   const label = t('passkeys')
 
   if (works === false)
@@ -563,6 +568,7 @@ function PasskeysRow({ open, onOpen, onClose }: RowProps) {
       onClose={onClose}
       onSave={async (form) => {
         const name = String(form.get('name')).trim()
+        if (!name) return t('fieldRequired')
         const res = await authClient.passkey.addPasskey({ name })
         if (!res?.error) {
           onClose()
@@ -578,23 +584,42 @@ function PasskeysRow({ open, onOpen, onClose }: RowProps) {
         return t(code === 'ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED' ? 'passkeyDuplicate' : 'passkeyNotAdded')
       }}
     >
-      {passkeys?.map((p) => (
-        <span key={p.id} className="flex items-center justify-between gap-3">
-          <span className="min-w-0 truncate">{p.name}</span>
-          <button
-            type="button"
-            aria-label={`${t('remove')} ${p.name}`}
-            onClick={async () => {
-              const res = await authClient.passkey.deletePasskey({ id: p.id })
-              if (res.error) toast.error(t('somethingWrong'))
-              else toast.success(t('removedName', { name: p.name ?? '' }))
-            }}
-            className="-mr-2 grid size-11 shrink-0 place-items-center rounded-sm text-ink-2 hover:bg-plate hover:text-ink"
-          >
-            <X className="size-4" weight="bold" />
-          </button>
-        </span>
-      ))}
+      {passkeys?.map((p) =>
+        removing === p.id ? (
+          <div key={p.id} role="alert" className="grid gap-3 rounded-sm bg-over/10 p-3">
+            <p className="text-[15px] font-semibold">{t('confirmRemove', { name: p.name ?? '' })}</p>
+            <div className="grid grid-cols-2 gap-2">
+              <Button type="button" variant="secondary" onClick={() => setRemoving(null)}>
+                {t('cancel')}
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={async () => {
+                  const res = await authClient.passkey.deletePasskey({ id: p.id })
+                  setRemoving(null)
+                  if (res.error) toast.error(t('somethingWrong'))
+                  else toast.success(t('removedName', { name: p.name ?? '' }))
+                }}
+              >
+                {t('remove')}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <span key={p.id} className="flex items-center justify-between gap-3">
+            <span className="min-w-0 truncate">{p.name}</span>
+            <button
+              type="button"
+              aria-label={`${t('remove')} ${p.name}`}
+              onClick={() => setRemoving(p.id)}
+              className="-mr-2 grid size-11 shrink-0 place-items-center rounded-sm text-ink-2 hover:bg-plate hover:text-ink"
+            >
+              <X className="size-4" weight="bold" />
+            </button>
+          </span>
+        ),
+      )}
       <Input name="name" required maxLength={40} autoFocus placeholder={t('passkeyName')} aria-label={t('passkeyName')} />
       {stale && (
         <Button

@@ -143,7 +143,7 @@ export const getShell = createServerFn({ method: 'GET' }).handler(async () => {
       email: u.email,
       locale,
       weekStart: (u as { weekStart?: number }).weekStart === 1 ? 1 : 0,
-      twoFactorEnabled: !!(u as { twoFactorEnabled?: boolean | null }).twoFactorEnabled,
+      twoStepOn: !!(u as { twoFactorEnabled?: boolean | null }).twoFactorEnabled,
     } as const,
     names: calendarNames(locale),
     activePocketId: active.id,
