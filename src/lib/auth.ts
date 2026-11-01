@@ -1,12 +1,16 @@
+import { getAuthenticatorName, passkey } from '@better-auth/passkey'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { APIError, createAuthMiddleware } from 'better-auth/api'
+import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api'
+import { twoFactor } from 'better-auth/plugins'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
-import { and, count, eq, gt, isNull } from 'drizzle-orm'
+import { and, count, eq, gt, isNull, ne } from 'drizzle-orm'
 
 import { db } from '../db/index.ts'
 import * as schema from '../db/schema.ts'
 import { normalizeInviteCode, signupGate } from './invites.ts'
+import { newBackupCodes } from './backup-codes.ts'
+import { requireVerifiedPerson } from './sign-in.ts'
 
 /** ALLOW_SIGNUP "true" lets anyone sign up; anything else, unset included, means sign-up by invite (ADR 0002). */
 export const signupOpen = () => process.env.ALLOW_SIGNUP === 'true'
@@ -21,6 +25,15 @@ const live = (code: string) => and(eq(schema.invite.code, code), isNull(schema.i
 async function needsInvite() {
   const [{ members }] = await db.select({ members: count() }).from(schema.user)
   return signupGate(signupOpen(), members) === 'invite'
+}
+
+/** Sent as a header because the package's client writes the request body itself; encoded because a header can't carry Thai. */
+function currentPasswordFrom(headers: Headers | undefined) {
+  try {
+    return decodeURIComponent(headers?.get('x-current-password') ?? '')
+  } catch {
+    return ''
+  }
 }
 
 // The invite each sign-up claimed, from the create hook to the after hook (the same request context reaches both).
@@ -39,6 +52,19 @@ export const auth = betterAuth({
     // Refuses a sign-up without a working invite before Better Auth looks the email up, so the answer never tells an
     // outsider whether an email already has an account. Only checks; the create hook claims.
     before: createAuthMiddleware(async (ctx) => {
+      // Better Auth skips the second step on a device that asks it to; Pao offers no such thing, so any client asking is refused.
+      if (ctx.path.startsWith('/two-factor/verify-') && ctx.body?.trustDevice) throw new APIError('BAD_REQUEST', { message: 'Pao does not trust devices.', code: 'TRUST_DEVICE_OFF' })
+      // A passkey skips the password and the code, so saving one asks for the password, like 2FA does.
+      if (ctx.path === '/passkey/verify-registration') {
+        const session = await getSessionFromCtx(ctx)
+        // No session: the package's own check refuses it.
+        if (!session) return
+        const accounts = await ctx.context.internalAdapter.findAccounts(session.user.id)
+        const hash = accounts.find((a) => a.providerId === 'credential')?.password
+        const password = currentPasswordFrom(ctx.headers)
+        if (!hash || !password || !(await ctx.context.password.verify({ hash, password }))) throw new APIError('BAD_REQUEST', { message: 'Current password is wrong.', code: 'INVALID_PASSWORD' })
+        return
+      }
       if (ctx.path !== '/sign-up/email' || !(await needsInvite())) return
       const code = inviteFrom(ctx.headers)
       const [found] = code ? await db.select({ id: schema.invite.id }).from(schema.invite).where(live(code)) : []
@@ -63,11 +89,38 @@ export const auth = betterAuth({
           if (id) await db.update(schema.invite).set({ usedBy: user.id }).where(eq(schema.invite.id, id))
         },
       },
+      update: {
+        // The user row only changes on this path when 2FA turns on: a session someone else holds stops working right away.
+        after: async (user, ctx) => {
+          const current = ctx?.context.session?.session.token
+          if (ctx?.path !== '/two-factor/verify-totp' || !current) return
+          await db.delete(schema.session).where(and(eq(schema.session.userId, user.id), ne(schema.session.token, current)))
+        },
+      },
     },
   },
+  // These check a password, so they get the same limit as the other routes that do, not the default 100.
+  rateLimit: { customRules: { '/passkey/verify-registration': { window: 10, max: 3 }, '/verify-password': { window: 10, max: 3 } } },
   advanced: {
     // Browsers drop Secure cookies over plain http (http://<LAN IP>:3000), so only an HTTPS address gets them.
     useSecureCookies: process.env.BETTER_AUTH_URL?.startsWith('https://') ?? false,
   },
-  plugins: [tanstackStartCookies()],
+  plugins: [
+    twoFactor({ issuer: 'Pao', backupCodeOptions: { customBackupCodesGenerate: newBackupCodes } }),
+    passkey({
+      rpName: 'Pao',
+      // The login page asks for no email, so the device must be able to find the passkey by itself.
+      authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
+      registration: {
+        afterVerification: ({ verification }) => {
+          requireVerifiedPerson(!!verification.registrationInfo?.userVerified)
+          // From the verified attestation, so the browser can't claim one. Unknown providers, and Apple's zeroed model, stay unnamed.
+          return { name: getAuthenticatorName(verification.registrationInfo?.aaguid) }
+        },
+      },
+      // The package itself accepts a passkey the device didn't unlock; this runs before the session is created.
+      authentication: { afterVerification: ({ verification }) => requireVerifiedPerson(verification.authenticationInfo.userVerified) },
+    }),
+    tanstackStartCookies(),
+  ],
 })

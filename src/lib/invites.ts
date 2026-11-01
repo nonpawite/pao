@@ -4,14 +4,20 @@ export const inviteAlphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
 /** An invite works this long after the admin makes it. */
 export const inviteDays = 7
 
-/** A fresh invite code, XXXX-XXXX from the alphabet above, drawn without modulo bias. */
-export function newInviteCode() {
+/** Random characters from the alphabet above, drawn without modulo bias. */
+export function randomCode(length: number) {
   const chars: string[] = []
   // 248 is the largest multiple of the alphabet's 31 under 256; bytes at or above it are redrawn.
-  while (chars.length < 8) {
-    for (const b of crypto.getRandomValues(new Uint8Array(8))) if (b < 248 && chars.length < 8) chars.push(inviteAlphabet[b % 31])
+  while (chars.length < length) {
+    for (const b of crypto.getRandomValues(new Uint8Array(length))) if (b < 248 && chars.length < length) chars.push(inviteAlphabet[b % 31])
   }
-  return `${chars.slice(0, 4).join('')}-${chars.slice(4).join('')}`
+  return chars.join('')
+}
+
+/** A fresh invite code, XXXX-XXXX. */
+export function newInviteCode() {
+  const code = randomCode(8)
+  return `${code.slice(0, 4)}-${code.slice(4)}`
 }
 
 /** A typed code as stored (XXXX-XXXX), whatever its case, spaces or dashes; null when it can't be a code. */

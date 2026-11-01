@@ -16,6 +16,7 @@ import { pickerClass, useDays } from './bill-form'
 import { useMoney, useT } from './context'
 import { CategoryGlyph, Row, Segmented } from './kit'
 import { Picker } from './picker'
+import { useFieldErrors } from './welcome'
 
 type Editing = { id: string | null; name: string; limitType: 'day' | 'cycle' | 'none'; amount: string }
 
@@ -33,6 +34,7 @@ export function PocketPlan({ pocket }: { pocket: Shell['pockets'][number] }) {
   const { money, symbol } = useMoney(pocket.currency)
   const [editing, setEditing] = useState<Editing | null>(null)
   const [error, setError] = useState('')
+  const { check, field, message, clear } = useFieldErrors()
   const canEdit = pocket.role === 'owner'
   const next = cycleFor(addDays(pocket.cycle.end, 1), pocket.cycleStartDay)
   const cycleTotal = pocket.categories.filter((c) => c.limitType === 'cycle').reduce((s, c) => s + c.limitAmount, 0)
@@ -120,6 +122,7 @@ export function PocketPlan({ pocket }: { pocket: Shell['pockets'][number] }) {
           if (o) return
           setEditing(null)
           setError('')
+          clear()
         }}
       >
         <DialogContent className="max-w-sm">
@@ -127,9 +130,11 @@ export function PocketPlan({ pocket }: { pocket: Shell['pockets'][number] }) {
           <DialogDescription className="sr-only">{t('limitAmount')}</DialogDescription>
           {editing && (
             <form
+              noValidate
               className="grid gap-4"
               onSubmit={async (e) => {
                 e.preventDefault()
+                if (!check(e.currentTarget, { name: (v) => (v ? null : t('fieldRequired')) })) return
                 const amount = editing.limitType === 'none' ? 0 : parseAmount(editing.amount, pocket.currency)
                 // Next to the field, not in a toast that leaves.
                 if (amount === null || (amount <= 0 && editing.limitType !== 'none')) return setError(t('badAmount'))
@@ -145,7 +150,8 @@ export function PocketPlan({ pocket }: { pocket: Shell['pockets'][number] }) {
             >
               <div className="grid gap-1.5">
                 <Label htmlFor="cat-name">{t('name')}</Label>
-                <Input id="cat-name" required maxLength={40} value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
+                <Input id="cat-name" name="name" required maxLength={40} value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} {...field('name')} />
+                {message('name')}
               </div>
               <div className="grid gap-1.5">
                 <span className={sectionLabel}>{t('limitType')}</span>

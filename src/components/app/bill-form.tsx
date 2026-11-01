@@ -17,6 +17,7 @@ import { deleteBill, saveBill } from '#/server/bills'
 import { useActivePocket, useMoney, useShell, useT } from './context'
 import { Segmented, glyphFor } from './kit'
 import { Picker } from './picker'
+import { useFieldErrors } from './welcome'
 
 export type BillDraft = {
   id: string | null
@@ -101,10 +102,12 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [confirming, setConfirming] = useState(false)
+  const { check, field, message, clear } = useFieldErrors()
   // Each opened bill starts clean.
   const close = () => {
     setDraft(null)
     setError('')
+    clear()
     setConfirming(false)
   }
 
@@ -133,12 +136,17 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
         <DialogDescription className="sr-only">{t('repeats')}</DialogDescription>
         {draft && (
           <form
+            noValidate
             className="grid gap-4"
             onSubmit={(e) => {
               e.preventDefault()
+              // Problems show inside the form, rather than in a toast that leaves.
+              const fine = check(e.currentTarget, {
+                name: (v) => (v ? null : t('fieldRequired')),
+                amount: (v) => (!draft.varies && parseAmount(v, pocket.currency) === null ? t('badAmount') : null),
+              })
+              if (!fine) return
               const amount = draft.varies ? null : parseAmount(draft.amount, pocket.currency)
-              // Problems show inside the form, next to Save, rather than in a toast that leaves.
-              if (!draft.varies && amount === null) return setError(t('badAmount'))
               if (!draft.categoryId) return setError(t('pickCategory'))
               void run(() =>
                 saveBill({
@@ -160,24 +168,28 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
           >
             <div className="grid gap-1.5">
               <Label htmlFor="bill-name">{t('name')}</Label>
-              <Input id="bill-name" required maxLength={40} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+              <Input id="bill-name" name="name" required maxLength={40} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} {...field('name')} />
+              {message('name')}
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="bill-amount">{t('amount')}</Label>
               <div className="flex gap-2">
                 <Input
                   id="bill-amount"
+                  name="amount"
                   inputMode="decimal"
                   placeholder={symbol}
                   required={!draft.varies}
                   disabled={draft.varies}
                   value={draft.varies ? '' : draft.amount}
                   onChange={(e) => setDraft({ ...draft, amount: typedAmount(e.target.value, true) })}
+                  {...field('amount')}
                 />
                 <BillChip on={draft.varies} onClick={() => setDraft({ ...draft, varies: !draft.varies })} className="h-11">
                   {t('varies')}
                 </BillChip>
               </div>
+              {message('amount')}
             </div>
             <div className="grid gap-1.5">
               <span className="caps text-[12px] text-ink-2">{t('category')}</span>

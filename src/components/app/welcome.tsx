@@ -98,5 +98,5 @@ export function useFieldErrors() {
         {errors[name]}
       </p>
     ) : null
-  return { check, field, message }
+  return { check, field, message, clear: () => setErrors({}) }
 }

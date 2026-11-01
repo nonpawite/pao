@@ -11,6 +11,20 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: tracker
+          POSTGRES_PASSWORD: tracker
+          POSTGRES_DB: tracker
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tracker"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v7
 
@@ -29,4 +43,11 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
       - run: bun test
+      - name: Sign-in tests against Postgres
+        env:
+          DATABASE_URL: postgresql://tracker:tracker@127.0.0.1:5432/tracker
+          BETTER_AUTH_SECRET: ci-only-secret-at-least-32-characters-long
+        run: |
+          bun scripts/migrate.mjs
+          bun run test:db
       - run: bun run build

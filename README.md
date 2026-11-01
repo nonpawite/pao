@@ -113,6 +113,25 @@ Pao serves plain `http`. Before members use it outside your home network, put it
 
 From then on, members sign in only at that address.
 
+### 2FA and passkeys
+
+Each member chooses these for themselves in Settings; nothing changes for a member who turns on neither.
+
+- **2FA** asks for a 6-digit code from an authenticator app after the password. It works on any address.
+- **Passkeys** sign a member in with a fingerprint, face or device PIN, with no password or code. Browsers allow them only on HTTPS or `localhost`, so on plain `http` the option is hidden and Settings says why.
+
+A passkey belongs to the address it was made on. If you move Pao to a new domain, members' passkeys stop working: they sign in with their password and add new ones.
+
+<a id="locked-out"></a>A member who loses their phone signs in with a backup code. If they have nothing left, or forgot their password, run this on the server with their email:
+
+```sh
+docker compose exec app bun scripts/reset-sign-in.mjs member@example.com
+```
+
+It clears their 2FA and passkeys, signs them out everywhere and prints a temporary password. Give them the password, and ask them to change it in Settings.
+
+If you lose the `app-data` volume, the auth secret goes with it. Everyone is signed out, and members with 2FA can't finish signing in until you run this command for them.
+
 ## Upgrade
 
 The compose file uses `ghcr.io/nonpawite/pao:latest`. It follows the newest release, so an upgrade brings fixes and features, and a breaking release when the major version changes. Read the [release notes](https://github.com/nonpawite/pao/releases) first: they list any migration that rewrites data.
@@ -147,7 +166,7 @@ Everything members log lives in Postgres, in the `db-data` volume. Make a backup
 docker compose exec -T db pg_dump -U tracker tracker > pao-backup.sql
 ```
 
-Keep copies somewhere other than the server. The `app-data` volume holds the auth secret. Losing it only signs everyone out.
+Keep copies somewhere other than the server. The `app-data` volume holds the auth secret. Losing it signs everyone out, and members with 2FA can't finish signing in until you run the [recovery command](#locked-out) for them.
 
 > [!CAUTION]
 > `docker compose down -v` deletes both volumes, and with them every entry, pocket and account.
