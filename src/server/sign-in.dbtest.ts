@@ -72,7 +72,7 @@ function appCode(totpURI: string) {
   return String((mac.readUInt32BE(at) & 0x7fffffff) % 1_000_000).padStart(6, '0')
 }
 
-/** A member who finished turning on two-step sign-in. */
+/** A member who finished turning on 2FA. */
 async function memberWithTwoStep() {
   const member = await newMember()
   const { data } = await member.phone.post('/two-factor/enable', { password })
@@ -81,7 +81,7 @@ async function memberWithTwoStep() {
   return { ...member, totpURI: data.totpURI as string, backupCodes: data.backupCodes as string[] }
 }
 
-test('with two-step sign-in on, the right password alone gives no session', async () => {
+test('with 2FA on, the right password alone gives no session', async () => {
   const member = await memberWithTwoStep()
   const { data, on } = await member.signIn()
   assert.equal(data.twoFactorRedirect, true)
@@ -108,6 +108,7 @@ test('the second step takes the right code and refuses a wrong one', async () =>
 test('a backup code signs in once and fails the second time', async () => {
   const member = await memberWithTwoStep()
   assert.equal(member.backupCodes.length, 10)
+  assert.match(member.backupCodes[0], /^[A-HJKMNP-Z2-9]{5}-[A-HJKMNP-Z2-9]{5}$/)
   const first = await member.signIn()
   await first.on.post('/two-factor/verify-backup-code', { code: member.backupCodes[0] })
   assert.equal(await first.on.signedIn(), true)
@@ -123,7 +124,7 @@ test('backup codes are not stored as plain text', async () => {
   for (const code of member.backupCodes) assert.ok(!row.backupCodes.includes(code))
 })
 
-test('turning on two-step sign-in signs out other devices and keeps this one', async () => {
+test('turning on 2FA signs out other devices and keeps this one', async () => {
   const member = await newMember()
   const { on: laptop } = await member.signIn()
   const { data } = await member.phone.post('/two-factor/enable', { password })
@@ -133,7 +134,7 @@ test('turning on two-step sign-in signs out other devices and keeps this one', a
   assert.equal(await member.phone.signedIn(), true)
 })
 
-test('turning on left unfinished keeps two-step sign-in off', async () => {
+test('turning on left unfinished keeps 2FA off', async () => {
   const member = await newMember()
   await member.phone.post('/two-factor/enable', { password })
   const { on } = await member.signIn()
@@ -288,7 +289,7 @@ test('no device can ask to skip the second step next time', async () => {
 })
 
 /** Adds a passkey the way a device would: asks for options, then answers with a software authenticator's attestation. */
-async function addSoftwarePasskey(on: ReturnType<typeof device>, headers: Record<string, string>) {
+async function addSoftwarePasskey(on: ReturnType<typeof device>, headers: Record<string, string>, made: { name?: string; aaguid?: string } = { name: 'Thief' }) {
   const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' })
   const jwk = publicKey.export({ format: 'jwk' })
   const cose = Buffer.concat([Buffer.from('a5010203262001215820', 'hex'), Buffer.from(jwk.x!, 'base64url'), Buffer.from('225820', 'hex'), Buffer.from(jwk.y!, 'base64url')])
@@ -299,13 +300,13 @@ async function addSoftwarePasskey(on: ReturnType<typeof device>, headers: Record
   const options = await on.get('/passkey/generate-register-options')
   assert.equal(options.status, 200)
   const clientData = Buffer.from(JSON.stringify({ type: 'webauthn.create', challenge: options.data.challenge, origin }))
-  // Flags: user present, user verified, attested credential follows. Zero counter, zero authenticator model.
-  const authData = Buffer.concat([sha256(options.data.rp.id), Buffer.from([0x45]), Buffer.alloc(4), Buffer.alloc(16), Buffer.from([0, rawId.length]), rawId, cose])
+  // Flags: user present, user verified, attested credential follows. Zero counter; the authenticator model is zero unless a test names one.
+  const authData = Buffer.concat([sha256(options.data.rp.id), Buffer.from([0x45]), Buffer.alloc(4), made.aaguid ? Buffer.from(made.aaguid.replaceAll('-', ''), 'hex') : Buffer.alloc(16), Buffer.from([0, rawId.length]), rawId, cose])
   // CBOR {fmt: 'none', attStmt: {}, authData}
   const attestation = Buffer.concat([Buffer.from('a363666d74646e6f6e656761747453746d74a068617574684461746158', 'hex'), Buffer.from([authData.length]), authData])
   const res = await on.post(
     '/passkey/verify-registration',
-    { name: 'Thief', response: { id, rawId: id, type: 'public-key', clientExtensionResults: {}, response: { clientDataJSON: clientData.toString('base64url'), attestationObject: attestation.toString('base64url'), transports: [] } } },
+    { name: made.name, response: { id, rawId: id, type: 'public-key', clientExtensionResults: {}, response: { clientDataJSON: clientData.toString('base64url'), attestationObject: attestation.toString('base64url'), transports: [] } } },
     headers,
   )
   return { res, id, privateKey }
@@ -326,6 +327,16 @@ test('adding a passkey needs the current password, so a stolen session alone can
   const right = await addSoftwarePasskey(member.phone, proof())
   assert.equal(right.res.status, 200)
   assert.equal((await passkeysOf(member.email)).length, 1)
+})
+
+test('a new passkey is named after its provider, and stays unnamed when the provider is unknown', async () => {
+  const member = await newMember()
+  const name = async (made: { name?: string; aaguid?: string }) => (await addSoftwarePasskey(member.phone, proof(), made)).res.data.name
+
+  assert.equal(await name({ aaguid: '50726f74-6f6e-5061-7373-50726f746f6e' }), 'Proton Pass')
+  // Apple's zeroed model, and one nobody has listed: the member's own word for it comes from Settings.
+  assert.equal(await name({}), null)
+  assert.equal(await name({ aaguid: '11111111-1111-4111-8111-111111111111' }), null)
 })
 
 test('a Thai password proves itself when adding a passkey', async () => {

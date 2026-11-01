@@ -1,4 +1,4 @@
-import { passkey } from '@better-auth/passkey'
+import { getAuthenticatorName, passkey } from '@better-auth/passkey'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api'
@@ -9,6 +9,7 @@ import { and, count, eq, gt, isNull, ne } from 'drizzle-orm'
 import { db } from '../db/index.ts'
 import * as schema from '../db/schema.ts'
 import { normalizeInviteCode, signupGate } from './invites.ts'
+import { newBackupCodes } from './backup-codes.ts'
 import { requireVerifiedPerson } from './sign-in.ts'
 
 /** ALLOW_SIGNUP "true" lets anyone sign up; anything else, unset included, means sign-up by invite (ADR 0002). */
@@ -53,7 +54,7 @@ export const auth = betterAuth({
     before: createAuthMiddleware(async (ctx) => {
       // Better Auth skips the second step on a device that asks it to; Pao offers no such thing, so any client asking is refused.
       if (ctx.path.startsWith('/two-factor/verify-') && ctx.body?.trustDevice) throw new APIError('BAD_REQUEST', { message: 'Pao does not trust devices.', code: 'TRUST_DEVICE_OFF' })
-      // A passkey skips the password and the code, so saving one asks for the password, like two-step sign-in does.
+      // A passkey skips the password and the code, so saving one asks for the password, like 2FA does.
       if (ctx.path === '/passkey/verify-registration') {
         const session = await getSessionFromCtx(ctx)
         // No session: the package's own check refuses it.
@@ -89,7 +90,7 @@ export const auth = betterAuth({
         },
       },
       update: {
-        // The user row only changes on this path when two-step sign-in turns on: a session someone else holds stops working right away.
+        // The user row only changes on this path when 2FA turns on: a session someone else holds stops working right away.
         after: async (user, ctx) => {
           const current = ctx?.context.session?.session.token
           if (ctx?.path !== '/two-factor/verify-totp' || !current) return
@@ -105,12 +106,18 @@ export const auth = betterAuth({
     useSecureCookies: process.env.BETTER_AUTH_URL?.startsWith('https://') ?? false,
   },
   plugins: [
-    twoFactor({ issuer: 'Pao' }),
+    twoFactor({ issuer: 'Pao', backupCodeOptions: { customBackupCodesGenerate: newBackupCodes } }),
     passkey({
       rpName: 'Pao',
       // The login page asks for no email, so the device must be able to find the passkey by itself.
       authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
-      registration: { afterVerification: ({ verification }) => requireVerifiedPerson(!!verification.registrationInfo?.userVerified) },
+      registration: {
+        afterVerification: ({ verification }) => {
+          requireVerifiedPerson(!!verification.registrationInfo?.userVerified)
+          // From the verified attestation, so the browser can't claim one. Unknown providers, and Apple's zeroed model, stay unnamed.
+          return { name: getAuthenticatorName(verification.registrationInfo?.aaguid) }
+        },
+      },
       // The package itself accepts a passkey the device didn't unlock; this runs before the session is created.
       authentication: { afterVerification: ({ verification }) => requireVerifiedPerson(verification.authenticationInfo.userVerified) },
     }),

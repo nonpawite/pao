@@ -1,3 +1,4 @@
+import { Fingerprint } from '@phosphor-icons/react'
 import { Link, createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 
@@ -6,6 +7,7 @@ import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { authClient, errorCode, passkeysWork } from '#/lib/auth-client'
+import { normalizeBackupCode } from '#/lib/backup-codes'
 import { getSessionUser, getWelcome } from '#/server/shell'
 
 export const Route = createFileRoute('/login')({
@@ -23,12 +25,12 @@ function Login() {
   const welcome = useWelcome(Route.useSearch().lang, data)
   const { t, locale } = welcome
   const [error, setError] = useState('')
-  const { check, field, message } = useFieldErrors()
+  const { check, field, message, clear } = useFieldErrors()
   const [busy, setBusy] = useState(false)
   // Until the page is live, Sign in would post the form natively and reload; wait for hydration instead.
   const [live, setLive] = useState(false)
   useEffect(() => setLive(true), [])
-  // Which way in the second step asks for, once the password was right and two-step sign-in is on.
+  // Which way in the second step asks for, once the password was right and 2FA is on.
   const [step, setStep] = useState<'password' | 'code' | 'backup'>('password')
 
   async function submit(form: FormData) {
@@ -44,7 +46,7 @@ function Login() {
   async function verify(code: string) {
     setBusy(true)
     setError('')
-    const res = step === 'code' ? await authClient.twoFactor.verifyTotp({ code: code.replace(/\s/g, '') }) : await authClient.twoFactor.verifyBackupCode({ code: code.trim() })
+    const res = step === 'code' ? await authClient.twoFactor.verifyTotp({ code: code.replace(/\s/g, '') }) : await authClient.twoFactor.verifyBackupCode({ code: normalizeBackupCode(code) })
     setBusy(false)
     if (!res.error) return router.navigate({ to: '/' })
     // The pending sign-in is gone: expired, or used up its tries. Only the password step can start a new one.
@@ -59,6 +61,7 @@ function Login() {
   async function signInWithPasskey() {
     setBusy(true)
     setError('')
+    clear()
     const res = await authClient.signIn.passkey()
     setBusy(false)
     if (res?.error) return setError(t(errorCode(res.error) === 'PASSKEY_NOT_VERIFIED' ? 'passkeyNotVerified' : 'passkeyFailed'))
@@ -88,6 +91,8 @@ function Login() {
               autoFocus
               autoComplete={step === 'code' ? 'one-time-code' : 'off'}
               inputMode={step === 'code' ? 'numeric' : 'text'}
+              autoCapitalize={step === 'code' ? undefined : 'characters'}
+              spellCheck={false}
               {...field('code')}
             />
             {message('code')}
@@ -152,6 +157,7 @@ function Login() {
         </Button>
         {live && passkeysWork() && (
           <Button type="button" variant="outline" size="lg" disabled={busy} className="w-full" onClick={() => void signInWithPasskey()}>
+            <Fingerprint aria-hidden className="size-5" />
             {t('passkeySignIn')}
           </Button>
         )}

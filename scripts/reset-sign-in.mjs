@@ -1,4 +1,4 @@
-// Gets a locked-out member back in (ADR 0003): clears their two-step sign-in and passkeys, signs them out everywhere,
+// Gets a locked-out member back in (ADR 0003): clears their 2FA and passkeys, signs them out everywhere,
 // and prints a temporary password. Usage: bun scripts/reset-sign-in.mjs <email>
 import { randomBytes } from 'node:crypto'
 
@@ -35,6 +35,6 @@ if (!found) {
   console.error(`No member uses ${email}. Nothing changed.`)
   process.exit(1)
 }
-console.log(`${email}: two-step sign-in and passkeys cleared, signed out everywhere.`)
+console.log(`${email}: 2FA and passkeys cleared, signed out everywhere.`)
 console.log(`Temporary password: ${temporary}`)
 console.log('Ask them to change it in Settings after signing in.')
