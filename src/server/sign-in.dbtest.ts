@@ -4,18 +4,19 @@ import { spawnSync } from 'node:child_process'
 import { createHash, createHmac, createSign, generateKeyPairSync, randomBytes, randomUUID } from 'node:crypto'
 import { test } from 'node:test'
 
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 
 import { db } from '../db/index.ts'
-import { passkey, twoFactor, user } from '../db/schema.ts'
+import { entry, passkey, pocket, pocketMember, twoFactor, user } from '../db/schema.ts'
 import { auth } from '../lib/auth.ts'
+import { ownEntry } from './session.ts'
 
 const origin = process.env.BETTER_AUTH_URL!
 
 /** One device: keeps its own cookies and sends what a browser would send. */
 function device() {
   const cookies = new Map<string, string>()
-  const send = async (method: string, path: string, body?: object) => {
+  const send = async (method: string, path: string, body?: object, headers: Record<string, string> = {}) => {
     const res = await auth.handler(
       new Request(`${origin}/api/auth${path}`, {
         method,
@@ -23,6 +24,7 @@ function device() {
           origin,
           'content-type': 'application/json',
           cookie: [...cookies].map(([k, v]) => `${k}=${v}`).join('; '),
+          ...headers,
         },
         body: body && JSON.stringify(body),
       }),
@@ -37,13 +39,16 @@ function device() {
     return { status: res.status, data: text ? JSON.parse(text) : null }
   }
   return {
-    post: (path: string, body: object = {}) => send('POST', path, body),
-    get: (path: string) => send('GET', path),
+    post: (path: string, body: object = {}, headers?: Record<string, string>) => send('POST', path, body, headers),
+    get: (path: string, headers?: Record<string, string>) => send('GET', path, undefined, headers),
     signedIn: async () => !!(await send('GET', '/get-session')).data?.session,
   }
 }
 
 const password = 'correct-horse-9'
+
+/** What Settings sends to prove the member knows their password before adding a passkey. */
+const proof = (value = password): Record<string, string> => ({ 'x-current-password': encodeURIComponent(value) })
 
 /** A new member, signed in on the returned device. */
 async function newMember() {
@@ -280,4 +285,85 @@ test('no device can ask to skip the second step next time', async () => {
   await on.post('/two-factor/verify-backup-code', { code: member.backupCodes[0] })
   assert.equal(await on.signedIn(), true)
   assert.equal((await on.post('/sign-in/email', { email: member.email, password })).data.twoFactorRedirect, true)
+})
+
+/** Adds a passkey the way a device would: asks for options, then answers with a software authenticator's attestation. */
+async function addSoftwarePasskey(on: ReturnType<typeof device>, headers: Record<string, string>) {
+  const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' })
+  const jwk = publicKey.export({ format: 'jwk' })
+  const cose = Buffer.concat([Buffer.from('a5010203262001215820', 'hex'), Buffer.from(jwk.x!, 'base64url'), Buffer.from('225820', 'hex'), Buffer.from(jwk.y!, 'base64url')])
+  const rawId = randomBytes(16)
+  const id = rawId.toString('base64url')
+  const sha256 = (data: Buffer | string) => createHash('sha256').update(data).digest()
+
+  const options = await on.get('/passkey/generate-register-options')
+  assert.equal(options.status, 200)
+  const clientData = Buffer.from(JSON.stringify({ type: 'webauthn.create', challenge: options.data.challenge, origin }))
+  // Flags: user present, user verified, attested credential follows. Zero counter, zero authenticator model.
+  const authData = Buffer.concat([sha256(options.data.rp.id), Buffer.from([0x45]), Buffer.alloc(4), Buffer.alloc(16), Buffer.from([0, rawId.length]), rawId, cose])
+  // CBOR {fmt: 'none', attStmt: {}, authData}
+  const attestation = Buffer.concat([Buffer.from('a363666d74646e6f6e656761747453746d74a068617574684461746158', 'hex'), Buffer.from([authData.length]), authData])
+  const res = await on.post(
+    '/passkey/verify-registration',
+    { name: 'Thief', response: { id, rawId: id, type: 'public-key', clientExtensionResults: {}, response: { clientDataJSON: clientData.toString('base64url'), attestationObject: attestation.toString('base64url'), transports: [] } } },
+    headers,
+  )
+  return { res, id, privateKey }
+}
+
+const passkeysOf = async (email: string) => db.select({ id: passkey.id }).from(passkey).where(eq(passkey.userId, await memberId(email)))
+
+test('adding a passkey needs the current password, so a stolen session alone cannot add one', async () => {
+  const member = await newMember()
+  const thief = member.phone
+
+  const none = await addSoftwarePasskey(thief, {})
+  assert.equal(none.res.data.code, 'INVALID_PASSWORD')
+  const wrong = await addSoftwarePasskey(thief, proof('not-the-password'))
+  assert.equal(wrong.res.data.code, 'INVALID_PASSWORD')
+  assert.deepEqual(await passkeysOf(member.email), [])
+
+  const right = await addSoftwarePasskey(member.phone, proof())
+  assert.equal(right.res.status, 200)
+  assert.equal((await passkeysOf(member.email)).length, 1)
+})
+
+test('a Thai password proves itself when adding a passkey', async () => {
+  const email = `${randomUUID()}@example.com`
+  const thai = 'รหัสผ่านของฉัน-9'
+  const phone = device()
+  assert.equal((await phone.post('/sign-up/email', { email, password: thai, name: 'Test member' })).status, 200)
+  assert.equal((await addSoftwarePasskey(phone, proof(thai))).res.status, 200)
+})
+
+test('a malformed password proof is refused, not an error', async () => {
+  const member = await newMember()
+  const { res } = await addSoftwarePasskey(member.phone, { 'x-current-password': '%E0%A4%A' })
+  assert.equal(res.data.code, 'INVALID_PASSWORD')
+})
+
+test('no session gets the same refusal as before, with or without a password', async () => {
+  const res = await device().post('/passkey/verify-registration', { name: 'Thief', response: {} }, proof())
+  assert.equal(res.status, 401)
+})
+
+/** A shared pocket with an owner and one other member, who has logged one entry in it. */
+async function sharedPocketWithEntry() {
+  const [owner, logger] = await Promise.all([newMember(), newMember()])
+  const [ownerId, loggerId] = await Promise.all([memberId(owner.email), memberId(logger.email)])
+  const [p] = await db.insert(pocket).values({ name: 'Shared', color: 'blue', kind: 'shared', cycleStartDay: 1, currency: 'USD', createdBy: ownerId }).returning({ id: pocket.id })
+  await db.insert(pocketMember).values([{ pocketId: p.id, userId: ownerId, role: 'owner' }, { pocketId: p.id, userId: loggerId, role: 'member' }])
+  const [e] = await db.insert(entry).values({ pocketId: p.id, userId: loggerId, kind: 'income', amount: 100, note: '', occurredOn: '2026-10-31' }).returning({ id: entry.id })
+  return { pocketId: p.id, ownerId, loggerId, entryId: e.id }
+}
+
+const matches = async (entryId: string, userId: string) => (await db.select({ id: entry.id }).from(entry).where(ownEntry(entryId, userId))).length === 1
+
+test('only a current member who logged an entry can change it', async () => {
+  const { pocketId, ownerId, loggerId, entryId } = await sharedPocketWithEntry()
+  assert.equal(await matches(entryId, loggerId), true)
+  assert.equal(await matches(entryId, ownerId), false)
+
+  await db.delete(pocketMember).where(and(eq(pocketMember.pocketId, pocketId), eq(pocketMember.userId, loggerId)))
+  assert.equal(await matches(entryId, loggerId), false)
 })

@@ -538,6 +538,7 @@ function BackupCodes({ codes, onDone }: { codes: string[]; onDone: () => void })
 }
 
 function PasskeysRow({ open, onOpen, onClose }: RowProps) {
+  const shell = useShell()
   const router = useRouter()
   const { t } = useT()
   const { data: passkeys } = authClient.useListPasskeys()
@@ -569,13 +570,19 @@ function PasskeysRow({ open, onOpen, onClose }: RowProps) {
       onSave={async (form) => {
         const name = String(form.get('name')).trim()
         if (!name) return t('fieldRequired')
-        const res = await authClient.passkey.addPasskey({ name })
+        const password = String(form.get('current'))
+        // Checked before the device prompt: a passkey the server then refuses would stay on the device, useless.
+        const checked = await authClient.$fetch('/verify-password', { method: 'POST', body: { password } })
+        if (checked.error) return t(checked.error.status === 429 ? 'tooManyTries' : checked.error.status === 400 ? 'wrongPassword' : 'somethingWrong')
+        const res = await authClient.passkey.addPasskey({ name, fetchOptions: { headers: { 'x-current-password': encodeURIComponent(password) } } })
         if (!res?.error) {
           onClose()
           toast.success(t('nameAdded', { name }))
           return
         }
         const code = errorCode(res.error)
+        if (code === 'INVALID_PASSWORD') return t('wrongPassword')
+        if (res.error.status === 429) return t('tooManyTries')
         if (code === 'SESSION_NOT_FRESH') {
           setStale(true)
           return t('passkeyStale')
@@ -621,6 +628,9 @@ function PasskeysRow({ open, onOpen, onClose }: RowProps) {
         ),
       )}
       <Input name="name" required maxLength={40} autoFocus placeholder={t('passkeyName')} aria-label={t('passkeyName')} />
+      {/* Lets password managers file the password under this account. */}
+      <input hidden readOnly name="username" autoComplete="username" value={shell.user.email} />
+      <Input name="current" type="password" required autoComplete="current-password" placeholder={t('currentPassword')} aria-label={t('currentPassword')} />
       {stale && (
         <Button
           type="button"

@@ -14,6 +14,7 @@ Pao sends no email, so there is no reset link to fall back on, and until now a f
 
 ## Consequences
 
+- Adding a passkey asks for the current password, like turning two-step sign-in on or off, because a passkey skips both. A stolen session alone can't add one. Someone who also has the password can, and a password change or turning on two-step sign-in doesn't remove passkeys, so a member who suspects an intruder also checks their list in Settings.
 - The password route stays as strong as the member chose: someone with a passkey but no two-step sign-in can still sign in with only a password.
 - A security key with no PIN is refused. Better Auth's passkey package accepts such keys by default, so Pao checks the result itself before the session is created.
 - The self-hoster sees a temporary password once. ADR 0002 rejected the admin handing over passwords for new accounts, but this is a rare recovery by someone who already controls the server, so it gives nobody new power. The member changes it in Settings.

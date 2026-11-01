@@ -37,6 +37,14 @@ export async function requirePocket(userId: string, pocketId: string) {
   return { ...row.pocket, role: row.role }
 }
 
+/** The user's own entry, while they still belong to its pocket: removal from a pocket ends changes to what they logged there. */
+export const ownEntry = (entryId: string, userId: string) =>
+  and(
+    eq(entry.id, entryId),
+    eq(entry.userId, userId),
+    inArray(entry.pocketId, db.select({ pocketId: pocketMember.pocketId }).from(pocketMember).where(eq(pocketMember.userId, userId))),
+  )
+
 export async function requireOwner(userId: string, pocketId: string) {
   const p = await requirePocket(userId, pocketId)
   if (p.role !== 'owner') throw new Error('Only the pocket owner can do that')

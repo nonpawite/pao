@@ -1,7 +1,7 @@
 import { passkey } from '@better-auth/passkey'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { APIError, createAuthMiddleware } from 'better-auth/api'
+import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api'
 import { twoFactor } from 'better-auth/plugins'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import { and, count, eq, gt, isNull, ne } from 'drizzle-orm'
@@ -26,6 +26,15 @@ async function needsInvite() {
   return signupGate(signupOpen(), members) === 'invite'
 }
 
+/** Sent as a header because the package's client writes the request body itself; encoded because a header can't carry Thai. */
+function currentPasswordFrom(headers: Headers | undefined) {
+  try {
+    return decodeURIComponent(headers?.get('x-current-password') ?? '')
+  } catch {
+    return ''
+  }
+}
+
 // The invite each sign-up claimed, from the create hook to the after hook (the same request context reaches both).
 const claimedBy = new WeakMap<object, string>()
 
@@ -44,6 +53,17 @@ export const auth = betterAuth({
     before: createAuthMiddleware(async (ctx) => {
       // Better Auth skips the second step on a device that asks it to; Pao offers no such thing, so any client asking is refused.
       if (ctx.path.startsWith('/two-factor/verify-') && ctx.body?.trustDevice) throw new APIError('BAD_REQUEST', { message: 'Pao does not trust devices.', code: 'TRUST_DEVICE_OFF' })
+      // A passkey skips the password and the code, so saving one asks for the password, like two-step sign-in does.
+      if (ctx.path === '/passkey/verify-registration') {
+        const session = await getSessionFromCtx(ctx)
+        // No session: the package's own check refuses it.
+        if (!session) return
+        const accounts = await ctx.context.internalAdapter.findAccounts(session.user.id)
+        const hash = accounts.find((a) => a.providerId === 'credential')?.password
+        const password = currentPasswordFrom(ctx.headers)
+        if (!hash || !password || !(await ctx.context.password.verify({ hash, password }))) throw new APIError('BAD_REQUEST', { message: 'Current password is wrong.', code: 'INVALID_PASSWORD' })
+        return
+      }
       if (ctx.path !== '/sign-up/email' || !(await needsInvite())) return
       const code = inviteFrom(ctx.headers)
       const [found] = code ? await db.select({ id: schema.invite.id }).from(schema.invite).where(live(code)) : []
@@ -78,6 +98,8 @@ export const auth = betterAuth({
       },
     },
   },
+  // These check a password, so they get the same limit as the other routes that do, not the default 100.
+  rateLimit: { customRules: { '/passkey/verify-registration': { window: 10, max: 3 }, '/verify-password': { window: 10, max: 3 } } },
   advanced: {
     // Browsers drop Secure cookies over plain http (http://<LAN IP>:3000), so only an HTTPS address gets them.
     useSecureCookies: process.env.BETTER_AUTH_URL?.startsWith('https://') ?? false,

@@ -6,7 +6,7 @@ import { db } from '#/db/index'
 import { bankAccount, bill, category, entry } from '#/db/schema'
 import { addDays } from '#/lib/budget'
 import { maxAmount } from '#/lib/money'
-import { pocketEntries, requirePocket, requireUser, todayISO } from './session'
+import { ownEntry, pocketEntries, requirePocket, requireUser, todayISO } from './session'
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 
@@ -71,7 +71,7 @@ export const addEntry = createServerFn({ method: 'POST' })
     return { id: row.id }
   })
 
-/** Only the person who logged an entry can change it. */
+/** Only the person who logged an entry can change it, while they still belong to its pocket. */
 export const updateEntry = createServerFn({ method: 'POST' })
   .validator(entryInput.extend({ id: z.uuid() }))
   .handler(async ({ data: { id, ...data } }) => {
@@ -80,7 +80,7 @@ export const updateEntry = createServerFn({ method: 'POST' })
     const [row] = await db
       .update(entry)
       .set(values)
-      .where(and(eq(entry.id, id), eq(entry.userId, u.id)))
+      .where(ownEntry(id, u.id))
       .returning({ id: entry.id })
     if (!row) throw new Error('Entry not found')
   })
@@ -97,14 +97,14 @@ export const getDayEntries = createServerFn({ method: 'GET' })
 
 export type DayEntry = Awaited<ReturnType<typeof getDayEntries>>[number]
 
-/** Only the person who logged an entry can remove it. Returns what it was, so Undo can log it again as it stood. */
+/** Only the person who logged an entry can remove it, while they still belong to its pocket. Returns what it was, so Undo can log it again as it stood. */
 export const deleteEntry = createServerFn({ method: 'POST' })
   .validator(z.object({ id: z.uuid() }))
   .handler(async ({ data }) => {
     const u = await requireUser()
     const [row] = await db
       .delete(entry)
-      .where(and(eq(entry.id, data.id), eq(entry.userId, u.id)))
+      .where(ownEntry(data.id, u.id))
       .returning({
         pocketId: entry.pocketId,
         kind: entry.kind,

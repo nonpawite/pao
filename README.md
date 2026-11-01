@@ -166,7 +166,7 @@ Everything members log lives in Postgres, in the `db-data` volume. Make a backup
 docker compose exec -T db pg_dump -U tracker tracker > pao-backup.sql
 ```
 
-Keep copies somewhere other than the server. The `app-data` volume holds the auth secret. Losing it only signs everyone out.
+Keep copies somewhere other than the server. The `app-data` volume holds the auth secret. Losing it signs everyone out, and members with two-step sign-in can't finish signing in until you run the [recovery command](#locked-out) for them.
 
 > [!CAUTION]
 > `docker compose down -v` deletes both volumes, and with them every entry, pocket and account.
