@@ -104,6 +104,53 @@ Then put the same password in `POSTGRES_PASSWORD` and in `DATABASE_URL` in `dock
 
 </details>
 
+### Your own Postgres
+
+Pao can use a Postgres server you already run instead of the `db` service. It needs Postgres 13 or newer and a database of its own: Pao's tables (`user`, `session`, `account` and more) clash with other apps' tables in a shared one. On first start the app sets up the empty database by itself.
+
+<details>
+<summary>Use your own Postgres</summary>
+
+1. On your server, as an admin, make a user and an empty database it owns:
+
+   ```sql
+   CREATE USER pao WITH PASSWORD 'choose-a-password';
+   CREATE DATABASE pao OWNER pao;
+   ```
+
+2. In `docker-compose.yml`, delete the whole `db` service, the `depends_on` lines under `app`, and `db-data:` under `volumes`.
+
+3. Under `app`, set `DATABASE_URL` to your server:
+
+   ```yaml
+         DATABASE_URL: postgresql://pao:choose-a-password@db.example.com:5432/pao
+   ```
+
+   - If the server requires SSL, as most hosted ones do, add `?sslmode=verify-full` to the end. If its certificate is self-signed or from a private CA, use `?sslmode=no-verify` instead: the connection is still encrypted, but Pao doesn't check that it reached your server.
+   - If Postgres runs on the same machine as Pao, use `host.docker.internal` as the address, because `localhost` inside the container is the container itself. On Linux, also add this under `app`, and let Postgres accept connections from Docker's network (`listen_addresses` and `pg_hba.conf`):
+
+     ```yaml
+         extra_hosts:
+           - "host.docker.internal:host-gateway"
+     ```
+
+4. Run `docker compose up -d`.
+
+[Database password](#database-password) doesn't apply. For backups, use `pg_dump` and `psql` from your server's major version: a newer `pg_dump` writes settings an older server rejects.
+
+```sh
+pg_dump "postgresql://pao:choose-a-password@db.example.com:5432/pao" > pao-backup.sql
+```
+
+To restore, run `docker compose stop app`. As an admin, run `DROP DATABASE pao;` and then the `CREATE DATABASE` line from step 1. Then:
+
+```sh
+psql "postgresql://pao:choose-a-password@db.example.com:5432/pao" -q -v ON_ERROR_STOP=1 < pao-backup.sql
+docker compose start app
+```
+
+</details>
+
 ### HTTPS and access away from home
 
 Pao serves plain `http`. Before members use it outside your home network, put it behind an HTTPS reverse proxy, such as Caddy, nginx or Traefik, that forwards to port 3000 on the server.
@@ -136,7 +183,7 @@ If you lose the `app-data` volume, the auth secret goes with it. Everyone is sig
 
 The compose file uses `ghcr.io/nonpawite/pao:latest`. It follows the newest release, so an upgrade brings fixes and features, and a breaking release when the major version changes. Read the [release notes](https://github.com/nonpawite/pao/releases) first: they list any migration that rewrites data.
 
-1. Back up the database:
+1. Back up the database (with [your own Postgres](#your-own-postgres), use the `pg_dump` command there):
 
    ```sh
    docker compose exec -T db pg_dump -U tracker tracker > pao-backup.sql
@@ -160,7 +207,7 @@ To stay on major version 1, replace `:latest` with `:1`. To stay on one release,
 
 ## Backups
 
-Everything members log lives in Postgres, in the `db-data` volume. Make a backup in the Pao folder:
+Everything members log lives in Postgres, in the `db-data` volume ([your own Postgres](#your-own-postgres) has its own backup and restore steps). Make a backup in the Pao folder:
 
 ```sh
 docker compose exec -T db pg_dump -U tracker tracker > pao-backup.sql
