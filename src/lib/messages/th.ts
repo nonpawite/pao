@@ -233,6 +233,7 @@ export const th: Messages = {
   signUp: 'สร้างบัญชี',
   email: 'อีเมล',
   password: 'รหัสผ่าน',
+  forgotPassword: 'ลืมรหัสผ่าน? ถามผู้ดูแล Pao นี้ให้รีเซ็ตการเข้าสู่ระบบ',
   edit: 'แก้ไข',
   currentPassword: 'รหัสผ่านปัจจุบัน',
   newPassword: 'รหัสผ่านใหม่ (8 ตัวขึ้นไป)',

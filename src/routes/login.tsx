@@ -146,6 +146,7 @@ function Login() {
           <Label htmlFor="password">{t('password')}</Label>
           <Input id="password" name="password" type="password" required autoComplete="current-password" {...field('password')} />
           {message('password')}
+          <p className="text-[14px] text-ink-2">{t('forgotPassword')}</p>
         </div>
         {error && (
           <p role="alert" className="text-[14px] text-over-text">

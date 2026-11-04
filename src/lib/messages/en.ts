@@ -232,6 +232,7 @@ export const en = {
   signUp: 'Create account',
   email: 'Email',
   password: 'Password',
+  forgotPassword: 'Forgot your password? Ask whoever runs this Pao to reset your sign-in.',
   edit: 'Edit',
   currentPassword: 'Current password',
   newPassword: 'New password (8+ characters)',
