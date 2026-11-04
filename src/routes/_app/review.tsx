@@ -2,7 +2,7 @@ import { Link, createFileRoute, stripSearchParams, useNavigate } from '@tanstack
 import { ArrowDownRight, ArrowUpRight, CaretRight, CaretUp } from '@phosphor-icons/react'
 import { z } from 'zod'
 
-import { CycleBars, RunningTotal, WeekdayBars, WhereItWent, useCategoryColor } from '#/components/app/charts'
+import { CycleBars, DailyBars, RunningTotal, WeekdayBars, WhereItWent, useCategoryColor } from '#/components/app/charts'
 import { useActivePocket, useMoney, useT } from '#/components/app/context'
 import { PocketChip, PocketTabs } from '#/components/app/frame'
 import { Board, BoardLine, CategoryGlyph, Figure, PageTitle, Segmented, Tile, boardGrid, pageMain } from '#/components/app/kit'
@@ -66,6 +66,12 @@ function Review() {
               start={data.cycle.start}
               end={data.cycle.end}
             />
+          </Tile>
+        )}
+
+        {data.burn && (
+          <Tile title={t('dayByDay')} aside={t('dayByDayHint')} className="lg:col-span-6">
+            <DailyBars running={data.burn.current} plan={data.burn.plan} start={data.cycle.start} length={data.cycle.length} />
           </Tile>
         )}
 

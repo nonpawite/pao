@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import type { PointerEvent, ReactNode } from 'react'
 
 import { addDays } from '#/lib/budget'
@@ -450,6 +451,74 @@ export function CycleBars({ bars, cycle, className }: { bars: Bar[]; cycle: { da
           {t('atThisPace', { amount: money(pace) })}
         </span>
       )}
+    </div>
+  )
+}
+
+/**
+ * Spent on each day of the cycle. Today is the ink bar; days still to come keep their slot, empty.
+ * The dashed line is the plan spread evenly per day. A bar opens that day's entries.
+ */
+export function DailyBars({ running, plan, start, length }: { running: number[]; plan: number | null; start: string; length: number }) {
+  const { t, day } = useT()
+  const { money } = useMoney()
+  const [hover, setHover] = useState<number | null>(null)
+  const spent = running.map((v, d) => v - (running[d - 1] ?? 0))
+  const today = spent.length - 1
+  const perDay = plan ? plan / length : 0
+  const max = Math.max(1, perDay, ...spent)
+  const shown = hover ?? today
+  return (
+    <div className="grid gap-2">
+      <span className="flex items-baseline justify-between gap-2 text-[12px]">
+        <span className="caps text-on-board-2">{day(addDays(start, shown))}</span>
+        <span className="font-board text-[13px] font-semibold">{shown <= today ? money(spent[shown]) : '–'}</span>
+      </span>
+      <div className="relative flex h-36 items-end gap-[2px]" onPointerLeave={() => setHover(null)}>
+        {perDay > 0 && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 border-t-[1.5px] border-dashed border-on-board-2"
+            style={{ bottom: `${(perDay / max) * 100}%` }}
+          />
+        )}
+        {Array.from({ length }, (_, d) => {
+          const date = addDays(start, d)
+          const bar = (
+            <span
+              className={cn(
+                'block w-full rounded-t-xs transition-colors',
+                d === shown ? 'bg-series' : 'bg-series-hi',
+                d > today && 'bg-transparent',
+              )}
+              style={{ height: d <= today ? `${Math.max(1.5, (spent[d] / max) * 100)}%` : 0 }}
+            />
+          )
+          return d > today ? (
+            <span key={d} aria-hidden className="flex h-full flex-1 items-end" onPointerEnter={() => setHover(d)}>
+              {bar}
+            </span>
+          ) : (
+            <Link
+              key={d}
+              to="/spending"
+              search={{ period: 'custom', from: date, to: date, kind: 'expense' }}
+              aria-label={`${day(date)} ${money(spent[d])}`}
+              onPointerEnter={() => setHover(d)}
+              onFocus={() => setHover(d)}
+              onBlur={() => setHover(null)}
+              className="flex h-full flex-1 items-end rounded-xs outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
+            >
+              {bar}
+            </Link>
+          )
+        })}
+      </div>
+      <span className="caps flex justify-between border-t-2 border-board-line pt-1.5 text-[11px] text-on-board-2">
+        <span>{day(start)}</span>
+        <span>{day(addDays(start, length - 1))}</span>
+      </span>
+      {perDay > 0 && <LineKey color="var(--on-board-2)" dashed label={t('planPerDay', { amount: money(wholeUnits(perDay)) })} />}
     </div>
   )
 }
