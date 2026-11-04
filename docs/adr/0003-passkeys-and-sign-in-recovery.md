@@ -4,14 +4,13 @@ Each member can turn on 2FA, add passkeys, both or neither. A passkey is a compl
 
 Pao sends no email, so there is no reset link to fall back on, and until now a forgotten password had no way back at all.
 
-ADR 0004 adds a reset link by email for instances whose self-hoster sets up SMTP; this command stays the way back for the rest, and for lost 2FA.
-
 ## Considered Options
 
 - **A passkey as the second step after the password**: feels stricter, but Better Auth has no support for it, so it would mean custom sign-in code, the riskiest code to own. A verified passkey already proves two things: the member holds the device and can unlock it.
 - **A passkey replacing the password**: plain-HTTP households can't use passkeys, and losing the device would leave no way in.
 - **An admin button that clears a member's 2FA**: friendlier, but a hijacked admin session could strip a member's protection, and an admin locked out of their own account would still need a server command.
 - **Backup codes as the only recovery**: least code, but losing them would lock a member out for good, along with their spending history.
+- **A reset link by email over the self-hoster's SMTP**: built and then removed. Recovering a sign-in would hang on an outside mail provider, which a self-hosted app should never need.
 - **A command that leaves the password alone**: nobody sees a password, but a member who also forgot theirs stays locked out, and passkeys make forgetting more likely.
 
 ## Consequences

@@ -146,10 +146,7 @@ function Login() {
           <Label htmlFor="password">{t('password')}</Label>
           <Input id="password" name="password" type="password" required autoComplete="current-password" {...field('password')} />
           {message('password')}
-          {/* Always shown: without email, the page it opens says who can reset the sign-in. */}
-          <Link to="/forgot-password" search={{ lang: locale }} className="-my-2 grid h-11 items-center justify-self-start text-[14px] text-ink-2 underline decoration-2 underline-offset-4">
-            {t('forgotPassword')}
-          </Link>
+          <p className="text-[14px] text-ink-2">{t('forgotPassword')}</p>
         </div>
         {error && (
           <p role="alert" className="text-[14px] text-over-text">

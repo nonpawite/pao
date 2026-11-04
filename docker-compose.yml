@@ -46,10 +46,6 @@ services:
       APP_TZ: UTC
       # Only behind an HTTPS reverse proxy: the public address. Leave it unset for http://<server address>:3000.
       # BETTER_AUTH_URL: https://pao.example.com
-      # Email, for "Forgot your password?" on the sign-in page. Needs BETTER_AUTH_URL above. Write @ in the
-      # user name or password as %40. See the README's "Password reset by email".
-      # SMTP_URL: smtps://you%40example.com:password@smtp.example.com:465
-      # MAIL_FROM: Pao <pao@example.com>
     volumes:
       # The auth secret the app creates on first start.
       - app-data:/app/data

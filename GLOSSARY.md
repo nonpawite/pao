@@ -39,7 +39,3 @@ _Avoid_: MFA, two-step sign-in, two-factor
 **Backup code**:
 A one-time code a member saves when they turn on 2FA, typed in place of the 6-digit code when they don't have their phone.
 _Avoid_: Recovery code
-
-**Reset link**:
-A one-time link Pao emails to a member who forgot their password, for choosing a new one. Works for 1 hour. Only on instances with email set up.
-_Avoid_: Magic link, recovery link

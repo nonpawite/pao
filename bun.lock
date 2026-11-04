@@ -22,7 +22,6 @@
         "drizzle-kit": "^0.31.9",
         "drizzle-orm": "^0.45.1",
         "nitro": "3.0.260610-beta",
-        "nodemailer": "^10.3.1",
         "pg": "^8.16.3",
         "radix-ui": "^1.8.1",
         "react": "^19.2.0",
@@ -40,7 +39,6 @@
         "@tanstack/devtools-vite": "0.8.5",
         "@tanstack/router-cli": "^1.132.0",
         "@types/node": "^22.10.2",
-        "@types/nodemailer": "^8.0.2",
         "@types/pg": "^8.15.6",
         "@types/react": "^19.2.0",
         "@types/react-dom": "^19.2.0",
@@ -548,8 +546,6 @@
 
     "@types/node": ["@types/node@22.20.5", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-U2+DNr+wSjpsTS/wZGYHq7GcwfuSmKiKvoPvK22zwTlRhU91yOniN4qRR5KhIjvif7ysw/dz/hKmfDH0Ris4aA=="],
 
-    "@types/nodemailer": ["@types/nodemailer@8.0.2", "", { "dependencies": { "@types/node": "*" } }, "sha512-c7M5ox8p0nEOfbJ2E9Qcmt8/QCu/VzsiAhzBiZbvky2PhKZDHpKB3sQHBM5MEZNkCfBOaS6S9//AGPRTNB7IaA=="],
-
     "@types/pg": ["@types/pg@8.23.1", "", { "dependencies": { "@types/node": "*", "pg-protocol": "*", "pg-types": "^2.2.0" } }, "sha512-fKVHpikPdg4GKks3JuLEhvwSyvwzF23hnabPy6DD8ljVbC7+6J5dQzdv4arV6jqq57djnMgs1HKBxX4P8aBI3A=="],
 
     "@types/react": ["@types/react@19.3.0", "", { "dependencies": { "csstype": "^3.2.2" } }, "sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg=="],
@@ -715,8 +711,6 @@
     "nitro": ["nitro@3.0.260610-beta", "", { "dependencies": { "consola": "^3.4.2", "crossws": "^0.4.6", "db0": "^0.3.4", "env-runner": "^0.1.12", "h3": "2.0.1-rc.22", "hookable": "^6.1.1", "nf3": "^0.3.17", "ocache": "^0.1.5", "ofetch": "2.0.0-alpha.3", "ohash": "^2.0.11", "rolldown": "^1.1.0", "srvx": "^0.11.16", "unenv": "2.0.0-rc.24", "unstorage": "2.0.0-alpha.7" }, "peerDependencies": { "@vercel/queue": "^0.3.0", "dotenv": "*", "giget": "*", "jiti": "^2.7.0", "rollup": "^4.61.1", "vite": "^7 || ^8", "xml2js": "^0.6.2", "zephyr-agent": "^0.2.0" }, "optionalPeers": ["@vercel/queue", "giget", "rollup", "xml2js", "zephyr-agent"], "bin": "dist/cli/index.mjs" }, "sha512-KPb4L5yaF/Rx/xoGMpgHRJvZhbhGiqbRKOwwPLCH9jKTKTsEUHLjnJas85AeCzaswqa8Wi52eQBtRsODC4PS0Q=="],
 
     "node-releases": ["node-releases@2.0.59", "", {}, "sha512-5qr2okC4ItAI0hG5SaV0HoYMpnM/Y6+Oqr7AmPYy/2uEoGvS+GbSKLeRxSS1uAdu59yz0ouzcuXievSgg///WA=="],
-
-    "nodemailer": ["nodemailer@10.3.1", "", {}, "sha512-uF0AFsJC07Y1vdW7p580DKAnh7rAO+4UPSSB3mDCPNDufoiaOebV6JmrzpxB14OjEEEiBsNdYoM2Y+fN8M7BBA=="],
 
     "ocache": ["ocache@0.1.5", "", { "dependencies": { "ohash": "^2.0.11" } }, "sha512-kNNnkkVQup/QDvmTz8Q84wc2ntiyoVHDxa6eHWKt5qdGAmFRBIxy83rxgCYEjW0x06UJ9E3P6VgM2yY4rOBH4w=="],
 
