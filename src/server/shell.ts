@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { db } from '#/db/index'
 import { bankAccount, entry, invite, pocket, pocketMember, user } from '#/db/schema'
 import { auth, signupOpen } from '#/lib/auth'
+import { mailReady } from '#/lib/mail'
 import { addDays, cycleFor } from '#/lib/budget'
 import { isOwed } from '#/lib/bills'
 import { calendarNames, localeCodes, pickLocale } from '#/lib/i18n'
@@ -43,6 +44,7 @@ export const getWelcome = createServerFn({ method: 'GET' })
       names: Object.fromEntries(localeCodes.map((l) => [l, calendarNames(l)])) as Record<Locale, CalendarNames>,
       signup: signupGate(signupOpen(), members),
       invite: code && found ? { code, name: found.name } : null,
+      resetByEmail: mailReady(),
     }
   })
 
