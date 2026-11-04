@@ -85,6 +85,8 @@ Every setting lives in `docker-compose.yml`, under the `app` service. After you 
 | `APP_TZ` | `UTC` | The household's time zone, as a [tz database name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) such as `Europe/London`. "Today" and daily limits turn over at midnight there. Unset means `UTC`. |
 | `ALLOW_SIGNUP` | `"false"` | `"false"`: sign-up by invite from the admin (the first account). `"true"`: anyone can sign up, and invites still work. Unset means `"false"`. |
 | `BETTER_AUTH_URL` | not set | Needed only behind an HTTPS reverse proxy: the public address, such as `https://pao.example.com`. Sign-in cookies are then `Secure`, and sign-in from any other address is refused. Leave it unset at home. |
+| `SMTP_URL` | not set | Lets "Forgot your password?" on the sign-in page email a reset link. Without it, that page tells the member to ask you. Needs `BETTER_AUTH_URL` too. See [Password reset by email](#password-reset-by-email). |
+| `MAIL_FROM` | not set | The sender of Pao's emails, such as `Pao <pao@example.com>`. Unset means the user in `SMTP_URL`, when it is an email address. |
 | Port | `3000` | The left number in `"3000:3000"` under the app's `ports`. |
 
 The `db` service also publishes Postgres on the server's `127.0.0.1:5432`, for development. If another program on the server already uses port 5432, delete the `ports:` lines under `db`. The app doesn't need them.
@@ -178,6 +180,24 @@ docker compose exec app bun scripts/reset-sign-in.mjs member@example.com
 It clears their 2FA and passkeys, signs them out everywhere and prints a temporary password. Give them the password, and ask them to change it in Settings.
 
 If you lose the `app-data` volume, the auth secret goes with it. Everyone is signed out, and members with 2FA can't finish signing in until you run this command for them.
+
+### Password reset by email
+
+Without email, a member who forgot their password asks you to run [the recovery command](#locked-out). To let them reset it themselves, give Pao an SMTP server and its public address, under the `app` service's `environment`:
+
+```yaml
+      BETTER_AUTH_URL: https://pao.example.com
+      SMTP_URL: smtps://you%40gmail.com:app-password@smtp.gmail.com:465
+      # MAIL_FROM: Pao <pao@example.com>
+```
+
+Then run `docker compose up -d`. In `SMTP_URL`, write `@` inside the user name or password as `%40`. Gmail needs an [app password](https://support.google.com/accounts/answer/185833), not your own.
+
+Members then get the reset link from "Forgot your password?" on the sign-in page. The link works once, for 1 hour, and saving a new password signs the member out on every device. 2FA stays on, so a member with 2FA still needs their code.
+
+> Anyone who can read a member's inbox can now reset their password. Members who want more than their inbox's protection turn on 2FA.
+
+If a member says no email arrived, check the server log for `Reset email failed`.
 
 ## Upgrade
 

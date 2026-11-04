@@ -11,6 +11,8 @@ import * as schema from '../db/schema.ts'
 import { normalizeInviteCode, signupGate } from './invites.ts'
 import { newBackupCodes } from './backup-codes.ts'
 import { requireVerifiedPerson } from './sign-in.ts'
+import { pickLocale, translate } from './i18n.ts'
+import { mailReady, sendMail } from './mail.ts'
 
 /** ALLOW_SIGNUP "true" lets anyone sign up; anything else, unset included, means sign-up by invite (ADR 0002). */
 export const signupOpen = () => process.env.ALLOW_SIGNUP === 'true'
@@ -41,7 +43,21 @@ const claimedBy = new WeakMap<object, string>()
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: 'pg', schema }),
-  emailAndPassword: { enabled: true },
+  emailAndPassword: {
+    enabled: true,
+    // A reset ends every session, so whoever was signed in with the old password is out too.
+    revokeSessionsOnPasswordReset: true,
+    // Only while email is set up (ADR 0004); without it Better Auth refuses the request, and the forgot page says to ask the self-hoster.
+    ...(mailReady() && {
+      sendResetPassword: async ({ user, url }: { user: { email: string; name: string; locale?: string | null }; url: string }) => {
+        const locale = pickLocale([user.locale ?? ''])
+        // Not awaited: an email that exists would otherwise answer slower than one that doesn't.
+        sendMail(user.email, translate(locale, 'resetMailSubject'), translate(locale, 'resetMailBody', { name: user.name, link: url })).catch((error) =>
+          console.error('Reset email failed:', error),
+        )
+      },
+    }),
+  },
   user: {
     additionalFields: {
       locale: { type: 'string', defaultValue: 'en', input: true },

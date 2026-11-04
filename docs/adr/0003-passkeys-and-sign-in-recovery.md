@@ -4,6 +4,8 @@ Each member can turn on 2FA, add passkeys, both or neither. A passkey is a compl
 
 Pao sends no email, so there is no reset link to fall back on, and until now a forgotten password had no way back at all.
 
+ADR 0004 adds a reset link by email for instances whose self-hoster sets up SMTP; this command stays the way back for the rest, and for lost 2FA.
+
 ## Considered Options
 
 - **A passkey as the second step after the password**: feels stricter, but Better Auth has no support for it, so it would mean custom sign-in code, the riskiest code to own. A verified passkey already proves two things: the member holds the device and can unlock it.
