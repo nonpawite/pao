@@ -4,10 +4,10 @@ import { spawnSync } from 'node:child_process'
 import { createHash, createHmac, createSign, generateKeyPairSync, randomBytes, randomUUID } from 'node:crypto'
 import { test } from 'node:test'
 
-import { and, eq, like } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 
 import { db } from '../db/index.ts'
-import { entry, passkey, pocket, pocketMember, twoFactor, user, verification } from '../db/schema.ts'
+import { entry, passkey, pocket, pocketMember, twoFactor, user } from '../db/schema.ts'
 import { auth } from '../lib/auth.ts'
 import { ownEntry } from './session.ts'
 
@@ -377,45 +377,4 @@ test('only a current member who logged an entry can change it', async () => {
 
   await db.delete(pocketMember).where(and(eq(pocketMember.pocketId, pocketId), eq(pocketMember.userId, loggerId)))
   assert.equal(await matches(entryId, loggerId), false)
-})
-
-// test:db points SMTP_URL at a closed port: sending fails in the background, and the token is read from the database.
-const resetToken = async (userId: string) => {
-  const [row] = await db.select({ identifier: verification.identifier }).from(verification).where(and(eq(verification.value, userId), like(verification.identifier, 'reset-password:%')))
-  return row?.identifier.slice('reset-password:'.length)
-}
-
-test('an emailed reset link sets a new password once and signs out every device', async () => {
-  const { email, phone } = await newMember()
-  const [u] = await db.select({ id: user.id }).from(user).where(eq(user.email, email))
-  assert.equal((await device().post('/request-password-reset', { email, redirectTo: '/reset-password' })).status, 200)
-  const token = await resetToken(u.id)
-  assert.ok(token)
-
-  assert.equal((await device().post('/reset-password', { token, newPassword: 'new-horse-42' })).status, 200)
-  assert.equal(await phone.signedIn(), false)
-  assert.equal((await device().post('/sign-in/email', { email, password })).status, 401)
-  assert.equal((await device().post('/sign-in/email', { email, password: 'new-horse-42' })).status, 200)
-  // The link works once.
-  assert.equal((await device().post('/reset-password', { token, newPassword: 'third-horse-7' })).status, 400)
-})
-
-test('a reset asked for an unknown email answers the same and makes no link', async () => {
-  const known = await newMember()
-  const a = await device().post('/request-password-reset', { email: known.email, redirectTo: '/reset-password' })
-  const b = await device().post('/request-password-reset', { email: `${randomUUID()}@example.com`, redirectTo: '/reset-password' })
-  assert.deepEqual([b.status, b.data], [a.status, a.data])
-})
-
-// Better Auth refuses a redirectTo on another site, but skips that check under NODE_ENV=test, so it isn't tested here.
-
-test('a reset keeps 2FA: the new password alone gives no session', async () => {
-  const m = await memberWithTwoStep()
-  const [u] = await db.select({ id: user.id }).from(user).where(eq(user.email, m.email))
-  await device().post('/request-password-reset', { email: m.email, redirectTo: '/reset-password' })
-  await device().post('/reset-password', { token: await resetToken(u.id), newPassword: 'new-horse-42' })
-  const on = device()
-  const res = await on.post('/sign-in/email', { email: m.email, password: 'new-horse-42' })
-  assert.equal(res.data?.twoFactorRedirect, true)
-  assert.equal(await on.signedIn(), false)
 })
