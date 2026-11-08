@@ -38,6 +38,22 @@ export const diffDays = (from: ISODate, to: ISODate) => Math.round((toUTC(to) - 
 
 export const weekday = (date: ISODate) => new Date(toUTC(date)).getUTCDay()
 
+/** A 'YYYY-MM' month moved by n months. */
+export const shiftMonth = (month: string, n: number) => {
+  const [y, m] = month.split('-').map(Number)
+  const d = new Date(Date.UTC(y, m - 1 + n, 1))
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}`
+}
+
+/** The days a month grid shows: whole weeks from the week start (0 Sunday, 1 Monday) that cover the month. */
+export function monthCells(month: string, weekStart: number): ISODate[] {
+  const [y, m] = month.split('-').map(Number)
+  const first = iso(y, m, 1)
+  // Days before the 1st fill the first week; days after the last fill the final one.
+  const lead = (weekday(first) - weekStart + 7) % 7
+  return Array.from({ length: Math.ceil((lead + daysInMonth(y, m)) / 7) * 7 }, (_, i) => addDays(first, i - lead))
+}
+
 /** The calendar day a moment falls on in the household's time zone: APP_TZ, else UTC. */
 export const householdDay = (at: Date = new Date()): ISODate =>
   new Intl.DateTimeFormat('en-CA', { timeZone: process.env.APP_TZ || 'UTC' }).format(at)

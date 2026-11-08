@@ -1,10 +1,14 @@
-import { CaretDown, MagnifyingGlass } from '@phosphor-icons/react'
+import { CaretDown, CaretLeft, CaretRight, MagnifyingGlass } from '@phosphor-icons/react'
 import { Popover } from 'radix-ui'
 import { useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
+import { flushSync } from 'react-dom'
 
+import { addDays, daysInMonth, iso, monthCells, shiftMonth } from '#/lib/budget'
+import type { ISODate } from '#/lib/budget'
 import { currencies } from '#/lib/money'
 import { cn } from '#/lib/utils'
+import { useShell, useT } from './context'
 
 // `text` is what a search matches, for options whose label is not plain text.
 export type PickerOption<T> = { value: T; label: ReactNode; wide?: boolean; text?: string }
@@ -163,6 +167,143 @@ export function Picker<T extends string | number>({
                   )}
                 >
                   {o.label}
+                </button>
+              )
+            })}
+          </div>
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  )
+}
+
+/**
+ * Our date picker: a month on the same small board as the dropdown, weeks starting on the member's day,
+ * today underlined in the pocket's colour. Days after `max` are off. Arrows move by day and week, Page Up/Down by month.
+ */
+export function DatePicker({
+  value,
+  max,
+  onChange,
+  label,
+  className,
+  children,
+}: {
+  value: ISODate
+  max?: ISODate
+  onChange: (date: ISODate) => void
+  label: string
+  className?: string
+  children: ReactNode
+}) {
+  const shell = useShell()
+  const { t, day, month: monthLabel, names } = useT()
+  const [open, setOpen] = useState(false)
+  // The day arrows move from; its month is the one on show.
+  const [cursor, setCursor] = useState(value)
+  const gridRef = useRef<HTMLDivElement>(null)
+  const picked = useRef(false)
+  const month = cursor.slice(0, 7)
+  const cells = monthCells(month, shell.user.weekStart)
+  // Names come Monday first; turn them to start on the member's day.
+  const initials = Array.from({ length: 7 }, (_, i) => names.weekdayInitials[(shell.user.weekStart + i + 6) % 7])
+  const clamp = (d: ISODate) => (max && d > max ? max : d)
+  const nextOff = !!max && shiftMonth(month, 1) > max.slice(0, 7)
+
+  // The same day number in another month, or its last day when that month is shorter.
+  function toMonth(m: string) {
+    const [y, mo] = m.split('-').map(Number)
+    return clamp(iso(y, mo, Math.min(Number(cursor.slice(8)), daysInMonth(y, mo))))
+  }
+
+  function pick(d: ISODate) {
+    picked.current = true
+    onChange(d)
+    setOpen(false)
+  }
+
+  function onKey(e: KeyboardEvent<HTMLDivElement>) {
+    const days: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }
+    const months: Record<string, number> = { PageUp: -1, PageDown: 1 }
+    const next = e.key in days ? clamp(addDays(cursor, days[e.key])) : e.key in months ? toMonth(shiftMonth(month, months[e.key])) : null
+    if (!next) return
+    e.preventDefault()
+    // The day may be in a month not drawn yet: draw it now, so focus never drops to the page between keys.
+    flushSync(() => setCursor(next))
+    gridRef.current?.querySelector<HTMLElement>(`[data-day="${next}"]`)?.focus()
+  }
+
+  const arrow =
+    'grid size-11 place-items-center rounded-sm text-on-board-2 transition-colors enabled:hover:bg-flap enabled:hover:text-ink disabled:opacity-35 lg:size-9'
+
+  return (
+    <Popover.Root
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o)
+        if (o) setCursor(value)
+      }}
+    >
+      <Popover.Trigger type="button" aria-label={`${label}, ${day(value)}`} className={className}>
+        {children}
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          align="start"
+          sideOffset={6}
+          collisionPadding={12}
+          // Open on the picked day, so arrows start from it.
+          onOpenAutoFocus={(e) => {
+            e.preventDefault()
+            gridRef.current?.querySelector<HTMLElement>('[tabindex="0"]')?.focus()
+          }}
+          // A pick hands focus on to whatever onChange chose (the amount); Escape returns it to the trigger.
+          onCloseAutoFocus={(e) => {
+            if (picked.current) e.preventDefault()
+            picked.current = false
+          }}
+          className="board z-50 grid gap-1 rounded-sm p-1.5 shadow-[0_16px_32px_-12px_rgb(0_0_0/0.5)] duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
+        >
+          <div className="flex items-center justify-between gap-1">
+            <button type="button" aria-label={t('prevMonth')} onClick={() => setCursor(toMonth(shiftMonth(month, -1)))} className={arrow}>
+              <CaretLeft aria-hidden weight="bold" className="size-4" />
+            </button>
+            <span aria-live="polite" className="text-[15px] font-medium">
+              {monthLabel(month)}
+            </span>
+            <button type="button" aria-label={t('nextMonth')} disabled={nextOff} onClick={() => setCursor(toMonth(shiftMonth(month, 1)))} className={arrow}>
+              <CaretRight aria-hidden weight="bold" className="size-4" />
+            </button>
+          </div>
+          <div aria-hidden className="grid grid-cols-7 text-center text-[12px] leading-6 text-on-board-2">
+            {initials.map((d, i) => (
+              <span key={i}>{d}</span>
+            ))}
+          </div>
+          <div ref={gridRef} role="group" aria-label={monthLabel(month)} onKeyDown={onKey} className="grid grid-cols-7">
+            {cells.map((d) => {
+              const on = d === value
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  data-day={d}
+                  // The month is one Tab stop, on the cursor day; arrows move within it.
+                  tabIndex={d === cursor ? 0 : -1}
+                  disabled={!!max && d > max}
+                  aria-pressed={on}
+                  aria-current={d === shell.today ? 'date' : undefined}
+                  aria-label={day(d, true)}
+                  onClick={() => pick(d)}
+                  className={cn(
+                    'relative grid size-11 place-items-center rounded-sm font-board text-[15px] transition-colors enabled:hover:bg-flap disabled:opacity-35 lg:size-9',
+                    // Days from the months either side fill the weeks, quieter than this month's.
+                    d.slice(0, 7) === month ? 'font-semibold' : 'text-on-board-2',
+                    on && 'bg-ink text-ground enabled:hover:bg-ink',
+                  )}
+                >
+                  {Number(d.slice(8))}
+                  {d === shell.today && <span aria-hidden className="absolute bottom-1 h-0.5 w-3.5 rounded-full bg-sign" />}
                 </button>
               )
             })}

@@ -12,7 +12,7 @@ import { useActivePocket, useMoney, useShell, useT } from '#/components/app/cont
 import { PocketTabs } from '#/components/app/frame'
 import { Board, CategoryGlyph, Figure, PageTitle, Segmented, Tile, boardGrid, pageMain } from '#/components/app/kit'
 import { isOwed } from '#/lib/bills'
-import { addDays, daysInMonth, diffDays, iso, weekday } from '#/lib/budget'
+import { daysInMonth, diffDays, iso, monthCells, shiftMonth } from '#/lib/budget'
 import { ordinal } from '#/lib/i18n'
 import { cn } from '#/lib/utils'
 import { getBillsPage } from '#/server/bills'
@@ -32,12 +32,6 @@ export const Route = createFileRoute('/_app/bills')({
 })
 
 type Bill = BillsPage['monthBills'][number]
-
-const shiftMonth = (month: string, n: number) => {
-  const [y, m] = month.split('-').map(Number)
-  const d = new Date(Date.UTC(y, m - 1 + n, 1))
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
-}
 
 /** What a bill counts for in the month: what was paid, else what it costs or last cost; nothing once skipped. */
 const worth = (b: Bill) => (b.state === 'skipped' ? 0 : (b.paidAmount ?? b.amount ?? b.lastPaid ?? 0))
@@ -246,9 +240,7 @@ function CalendarView({ data, onEdit, onAdd }: { data: BillsPage; onEdit?: (b: P
   const [y, m] = data.month.split('-').map(Number)
   const first = iso(y, m, 1)
   const length = daysInMonth(y, m)
-  // Days before the 1st fill the first week; days after the last fill the final one.
-  const lead = (weekday(first) - shell.user.weekStart + 7) % 7
-  const cells = Array.from({ length: Math.ceil((lead + length) / 7) * 7 }, (_, i) => addDays(first, i - lead))
+  const cells = monthCells(data.month, shell.user.weekStart)
   const payday = iso(y, m, Math.min(data.payday, length))
   // Names come Monday first; turn them to start on the user's day.
   const weekdays = (list: string[]) => Array.from({ length: 7 }, (_, i) => list[(shell.user.weekStart + i + 6) % 7])

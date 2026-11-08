@@ -15,6 +15,7 @@ import type { DayEntry } from '#/server/entries'
 import { useCategoryColor } from './charts'
 import { useMoney, useShell, useT } from './context'
 import { Flap, Segmented, glyphFor } from './kit'
+import { DatePicker } from './picker'
 
 /** An existing entry to load into the sheet as the line being edited. */
 export type EditTarget = { id: string; pocketId: string; date: string }
@@ -386,24 +387,15 @@ export function AddEntryForm({
         {/* Picking the day is a step on the way to typing, so the amount takes focus back (desktop). */}
         <Chip on={date === shell.today} onClick={() => pickDate(shell.today)}>{t('today')}</Chip>
         <Chip on={date === yesterday} onClick={() => pickDate(yesterday)}>{t('yesterday')}</Chip>
-        {/* The date field is invisible over the chip, so the chip wears its focus ring. */}
-        <label
-          className={cn(
-            chipClass,
-            'relative has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus)]',
-            date !== shell.today && date !== yesterday && chipOn,
-          )}
+        <DatePicker
+          value={date}
+          max={addDays(shell.today, 1)}
+          onChange={pickDate}
+          label={t('pickDate')}
+          className={cn(chipClass, date !== shell.today && date !== yesterday && chipOn)}
         >
           {date !== shell.today && date !== yesterday ? day(date) : t('pickDate')}
-          <input
-            type="date"
-            value={date}
-            max={addDays(shell.today, 1)}
-            onChange={(e) => e.target.value && pickDate(e.target.value)}
-            className="absolute inset-0 opacity-0"
-            aria-label={t('pickDate')}
-          />
-        </label>
+        </DatePicker>
       </div>
       <button
         type="button"
