@@ -6,9 +6,26 @@ import {
   cycleLimitState,
   dayStrip,
   householdDay,
+  monthCells,
   previousCycle,
+  shiftMonth,
   sortByState,
 } from './budget.ts'
+
+test('month grid fills whole weeks from the week start', () => {
+  // 1 Nov 2026 is a Sunday.
+  const sun = monthCells('2026-11', 0)
+  assert.equal(sun.length, 35)
+  assert.deepEqual([sun[0], sun.at(-1)], ['2026-11-01', '2026-12-05'])
+  const mon = monthCells('2026-11', 1)
+  assert.equal(mon.length, 42)
+  assert.deepEqual([mon[0], mon.at(-1)], ['2026-10-26', '2026-12-06'])
+})
+
+test('shiftMonth crosses the year both ways', () => {
+  assert.equal(shiftMonth('2026-12', 1), '2027-01')
+  assert.equal(shiftMonth('2026-01', -1), '2025-12')
+})
 
 test('cycle runs payday to the day before next payday', () => {
   assert.deepEqual(cycleFor('2026-10-16', 25), { start: '2026-09-25', end: '2026-10-24', length: 30, dayIndex: 22 })

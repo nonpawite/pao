@@ -339,7 +339,7 @@ Plain and ink-led.
 - **Focus:** border turns ink, plus the global 2px focus outline.
 - **Error / Disabled:** invalid fields take the over-text border, with the problem in a sentence under them, never the browser's validation bubble; disabled drops to 50% opacity.
 - **Search on Spending:** a plate well, 40px tall, no border.
-- **Pickers:** the trigger reads as a field; choices open on a white board with the popover shadow. A long list (currencies) opens on the current choice with a search field on top that matches code or name. Its list scrolls with a 6px thumb in the strong-rule tone on no track, so the bar sits inside the board.
+- **Pickers:** the trigger reads as a field; choices open on a white board with the popover shadow. A long list (currencies) opens on the current choice with a search field on top that matches code or name. Its list scrolls with a 6px thumb in the strong-rule tone on no track, so the bar sits inside the board. Dates never use the browser's own calendar: the date picker opens the same board with ‹ month › on top, weekday initials, and the month's days in the figure face (the weeks' spill-over days quieter, days past the limit faded), the picked day filled ink and today underlined with a short accent line.
 
 ### Navigation
 - **Desktop sidebar rows:** an 18px outline icon, the page name (medium when active) over a 12px note, and one live figure in Geist at the right. Hover and active rows fill plate; active text goes ink.
