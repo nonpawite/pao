@@ -180,6 +180,7 @@ export function Picker<T extends string | number>({
 /**
  * Our date picker: a month on the same small board as the dropdown, weeks starting on the member's day,
  * today underlined in the pocket's colour. Days after `max` are off. Arrows move by day and week, Page Up/Down by month.
+ * With no `value` yet, it opens on today and marks no day.
  */
 export function DatePicker({
   value,
@@ -189,7 +190,7 @@ export function DatePicker({
   className,
   children,
 }: {
-  value: ISODate
+  value?: ISODate
   max?: ISODate
   onChange: (date: ISODate) => void
   label: string
@@ -200,9 +201,8 @@ export function DatePicker({
   const { t, day, month: monthLabel, names } = useT()
   const [open, setOpen] = useState(false)
   // The day arrows move from; its month is the one on show.
-  const [cursor, setCursor] = useState(value)
+  const [cursor, setCursor] = useState(value ?? shell.today)
   const gridRef = useRef<HTMLDivElement>(null)
-  const picked = useRef(false)
   const month = cursor.slice(0, 7)
   const cells = monthCells(month, shell.user.weekStart)
   // Names come Monday first; turn them to start on the member's day.
@@ -217,7 +217,6 @@ export function DatePicker({
   }
 
   function pick(d: ISODate) {
-    picked.current = true
     onChange(d)
     setOpen(false)
   }
@@ -241,10 +240,10 @@ export function DatePicker({
       open={open}
       onOpenChange={(o) => {
         setOpen(o)
-        if (o) setCursor(value)
+        if (o) setCursor(clamp(value ?? shell.today))
       }}
     >
-      <Popover.Trigger type="button" aria-label={`${label}, ${day(value)}`} className={className}>
+      <Popover.Trigger type="button" aria-label={value ? `${label}, ${day(value)}` : label} className={className}>
         {children}
       </Popover.Trigger>
       <Popover.Portal>
@@ -257,10 +256,9 @@ export function DatePicker({
             e.preventDefault()
             gridRef.current?.querySelector<HTMLElement>('[tabindex="0"]')?.focus()
           }}
-          // A pick hands focus on to whatever onChange chose (the amount); Escape returns it to the trigger.
+          // Focus left on the page (the board is gone) returns to the trigger; focus onChange moved on (the amount) stays.
           onCloseAutoFocus={(e) => {
-            if (picked.current) e.preventDefault()
-            picked.current = false
+            if (document.activeElement && document.activeElement !== document.body) e.preventDefault()
           }}
           className="board z-50 grid gap-1 rounded-sm p-1.5 shadow-[0_16px_32px_-12px_rgb(0_0_0/0.5)] duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
         >
