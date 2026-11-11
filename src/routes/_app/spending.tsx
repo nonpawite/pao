@@ -8,7 +8,7 @@ import { useActivePocket, useMoney, useShell, useT } from '#/components/app/cont
 import { EntryRows } from '#/components/app/entry-list'
 import { PocketTabs } from '#/components/app/frame'
 import { BoardLine, Figure, PageTitle, Segmented, Tile, boardGrid, pageMain } from '#/components/app/kit'
-import { Picker } from '#/components/app/picker'
+import { DatePicker, Picker } from '#/components/app/picker'
 import type { PickerOption } from '#/components/app/picker'
 import { cn } from '#/lib/utils'
 import { getSpending } from '#/server/spending'
@@ -272,12 +272,18 @@ function BoardSelect({ label, value, onChange, options }: { label: string; value
   )
 }
 
-function DateField({ label, value, onChange }: { label: string; value?: string; onChange: (v: string | undefined) => void }) {
+function DateField({ label, value, onChange }: { label: string; value?: string; onChange: (v: string) => void }) {
+  const { t, day } = useT()
   return (
-    <label className="flex min-w-0 flex-[1_1_200px] items-center gap-2">
-      <span className="caps shrink-0 text-[11px] text-on-board-2">{label}</span>
-      <input type="date" value={value ?? ''} onChange={(e) => onChange(e.target.value || undefined)} className={cn(field, 'min-w-0 flex-1')} />
-    </label>
+    <div className="flex min-w-0 flex-[1_1_200px] items-center gap-2">
+      {/* The trigger's name already says it ("From, 5 Nov"). */}
+      <span aria-hidden className="caps shrink-0 text-[11px] text-on-board-2">
+        {label}
+      </span>
+      <DatePicker value={value} onChange={onChange} label={label} className={cn(field, 'min-w-0 flex-1 text-left')}>
+        {value ? day(value) : <span className="text-on-board-2">{t('pickDate')}</span>}
+      </DatePicker>
+    </div>
   )
 }
 
