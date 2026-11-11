@@ -104,7 +104,7 @@ export type PocketEntry = Awaited<ReturnType<typeof pocketEntries>>[number]
  * The creator's account stays theirs: anyone else paying the bill pays from no account.
  */
 export async function pocketBills(pocketId: string, cycle: Pick<Cycle, 'start' | 'end'>, today: string, userId: string) {
-  const bills = await db.select().from(bill).where(eq(bill.pocketId, pocketId)).orderBy(asc(bill.day), asc(bill.name))
+  const bills = await db.select().from(bill).where(eq(bill.pocketId, pocketId)).orderBy(asc(bill.firstDue), asc(bill.name))
   if (!bills.length) return []
   const paying = await db
     .select({
@@ -129,7 +129,7 @@ export async function pocketBills(pocketId: string, cycle: Pick<Cycle, 'start' |
         ),
       ),
     )
-  return billStates(bills.map((b) => ({ ...b, since: householdDay(b.createdAt) })), paying, cycle, today)
+  return billStates(bills, paying, cycle, today)
     .map(({ createdBy, createdAt: _, ...b }) => ({ ...b, bankAccountId: createdBy === userId ? b.bankAccountId : null }))
     .sort(byUrgency)
 }

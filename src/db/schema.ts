@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm'
 import {
+  boolean,
   date,
   index,
   integer,
@@ -136,11 +137,19 @@ export const bill = pgTable(
     categoryId: uuid('category_id').references(() => category.id, { onDelete: 'set null' }),
     // The creator's account; accounts are private, so others pay it from none.
     bankAccountId: uuid('bank_account_id').references(() => bankAccount.id, { onDelete: 'set null' }),
-    repeat: text({ enum: ['monthly', 'yearly'] }).notNull(),
-    // 1-31; a day past the month's end means the last day of that month.
-    day: integer().notNull(),
-    // 1-12, yearly bills only.
-    month: integer(),
+    // Due on firstDue, then every `every` weeks, months or years. Its day of the month carries over;
+    // a day past a month's end falls on that month's last day.
+    firstDue: date('first_due', { mode: 'string' }).notNull(),
+    unit: text({ enum: ['week', 'month', 'year'] }).notNull(),
+    every: integer().notNull().default(1),
+    // Stops after this many charges, or after this date; null runs on.
+    endsAfter: integer('ends_after'),
+    endsOn: date('ends_on', { mode: 'string' }),
+    // On a free trial until firstDue, its first charge.
+    trial: boolean().notNull().default(false),
+    // No due dates from pausedOn on; due dates before resumedOn were missed while paused.
+    pausedOn: date('paused_on', { mode: 'string' }),
+    resumedOn: date('resumed_on', { mode: 'string' }),
     // The due date skipped this time; a later due date un-skips it.
     skippedOn: date('skipped_on', { mode: 'string' }),
     createdBy: text('created_by')

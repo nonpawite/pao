@@ -19,9 +19,13 @@ export type Bill = {
   amount: number | null
   categoryId: string | null
   bankAccountId: string | null
-  repeat: 'monthly' | 'yearly'
-  day: number
-  month: number | null
+  unit: 'week' | 'month' | 'year'
+  every: number
+  firstDue: string
+  trial: boolean
+  endsAfter: number | null
+  endsOn: string | null
+  pausedOn: string | null
   due: string | null
   state: BillState | null
   paidAmount: number | null

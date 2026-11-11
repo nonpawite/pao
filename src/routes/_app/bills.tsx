@@ -11,8 +11,8 @@ import { useCategoryColor } from '#/components/app/charts'
 import { useActivePocket, useMoney, useShell, useT } from '#/components/app/context'
 import { PocketTabs } from '#/components/app/frame'
 import { Board, CategoryGlyph, Figure, PageTitle, Segmented, Tile, boardGrid, pageMain } from '#/components/app/kit'
-import { isOwed } from '#/lib/bills'
-import { addDays, daysInMonth, diffDays, iso, weekday } from '#/lib/budget'
+import { isOwed, perMonthByAccount, timesAYear } from '#/lib/bills'
+import { addDays, daysInMonth, diffDays, iso, parts, weekday } from '#/lib/budget'
 import { ordinal } from '#/lib/i18n'
 import { cn } from '#/lib/utils'
 import { getBillsPage } from '#/server/bills'
@@ -98,24 +98,70 @@ function ListView({ data, onEdit, onAdd }: { data: BillsPage; onEdit?: (b: Param
   const pocket = useActivePocket()
   const { money } = useMoney()
   const cost = (b: BillsPage['bills'][number]) => b.amount ?? b.lastPaid ?? 0
-  const perMonth = data.bills.filter((b) => b.repeat === 'monthly').reduce((s, b) => s + cost(b), 0)
-  const perYear = perMonth * 12 + data.bills.filter((b) => b.repeat === 'yearly').reduce((s, b) => s + cost(b), 0)
-  const toPay = data.bills.reduce((s, b) => s + b.setAside, 0)
-  const yearlyOn = (b: BillsPage['bills'][number]) => t('dateDay', { day: b.day, month: names.months[b.month! - 1] })
-  const when = (b: BillsPage['bills'][number]) =>
-    b.repeat === 'yearly'
-      ? `${t('yearly')} · ${yearlyOn(b)}`
-      : b.day === 31
-        ? t('lastDay')
-        : `${t('monthly')} · ${ordinal(locale, b.day)}`
+  // Ended bills move to their own list once nothing is left to pay; paused and ended ones cost nothing.
+  const ended = data.bills.filter((b) => b.ended && !isOwed(b.state))
+  const active = data.bills.filter((b) => !ended.includes(b))
+  const perYear = active.filter((b) => !b.paused && !b.ended).reduce((s, b) => s + cost(b) * timesAYear(b), 0)
+  const perMonth = Math.round(perYear / 12)
+  // Only the viewer's own accounts: anyone else's bill comes back with no account (pocketBills).
+  const shell = useShell()
+  const byAccount = [...perMonthByAccount(active)].filter(([, v]) => v > 0)
+  const accountName = (id: string | null) => shell.accounts.find((a) => a.id === id)?.name ?? t('noBankAccount')
+  const toPay = data.toPay
+  // The day it falls on: a weekday, a day of the month, or a date in the year.
+  const on = (b: BillsPage['bills'][number]) => {
+    const { y, m, d } = parts(b.firstDue)
+    if (b.unit === 'week') return names.weekdaysLong[(new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7]
+    if (b.unit === 'year') return t('dateDay', { day: d, month: names.months[m - 1] })
+    return d === 31 ? t('lastDay') : ordinal(locale, d)
+  }
+  const when = (b: BillsPage['bills'][number]) => {
+    if (b.unit === 'month' && b.every === 1 && parts(b.firstDue).d === 31) return b.paused ? `${t('pausedState')} · ${t('lastDay')}` : t('lastDay')
+    const n = b.every
+    const how = { week: n === 1 ? t('weekly') : t('everyWeeks', { n }), month: n === 1 ? t('monthly') : t('everyMonths', { n }), year: n === 1 ? t('yearly') : t('everyYears', { n }) }[b.unit]
+    return `${b.paused ? `${t('pausedState')} · ` : ''}${how} · ${on(b)}`
+  }
   const next = (b: BillsPage['bills'][number]) => {
     if (b.state === 'late') {
       const n = diffDays(b.due!, data.today)
       return <span className="text-over-text">{n === 1 ? t('billLateOne') : t('billLate', { n })}</span>
     }
     if (b.state === 'today') return <span className="text-ahead-text">{t('billToday')}</span>
-    return day(b.next)
+    if (b.paused) return t('pausedState')
+    if (b.trialDaysLeft !== null) return b.trialDaysLeft === 1 ? t('trialLeftOne') : t('trialLeft', { n: b.trialDaysLeft })
+    return b.next ? day(b.next) : t('endedBills')
   }
+  const row = (b: BillsPage['bills'][number]) => (
+          <button
+            key={b.id}
+            type="button"
+            disabled={!onEdit}
+            onClick={() => onEdit?.(b)}
+            className={cn(
+              listCols,
+              'group -mx-2 border-t border-board-line px-2 py-3 text-left transition-colors enabled:hover:bg-flap disabled:cursor-default',
+            )}
+          >
+            <span className="flex min-w-0 items-center gap-3">
+              <CategoryGlyph name={pocket.categories.find((c) => c.id === b.categoryId)?.name ?? ''} className="size-7" />
+              <span className="grid min-w-0">
+                <span className="truncate text-[16px] font-medium">{b.name}</span>
+                <span className="truncate text-[12px] text-on-board-2">
+                  {/* The phone has no Repeats column, so the day rides along here. */}
+                  <span className="lg:hidden">
+                    {on(b)} ·{' '}
+                  </span>
+                  {pocket.categories.find((c) => c.id === b.categoryId)?.name}
+                </span>
+              </span>
+            </span>
+            <span className="caps hidden text-[12px] text-on-board-2 lg:block">{when(b)}</span>
+            <span className="text-right font-board text-[17px] font-semibold">
+              {b.amount !== null ? money(b.amount) : <span className="text-[13px] text-on-board-2">{t('varies')}</span>}
+            </span>
+            <span className="caps text-right text-[12px] text-on-board-2">{next(b)}</span>
+          </button>
+  )
 
   // No bills yet: one panel that says so and offers the first one, not a table header over zeros.
   if (!data.bills.length)
@@ -146,6 +192,9 @@ function ListView({ data, onEdit, onAdd }: { data: BillsPage; onEdit?: (b: Param
         <dl className="grid gap-2 font-board text-[12px] font-semibold">
           <Fact label={t('aYear')} value={money(perYear)} />
           <Fact label={t('toPayCycle')} value={money(toPay)} />
+          {byAccount.length > 1 || (byAccount.length === 1 && byAccount[0][0] !== null)
+            ? byAccount.map(([id, v]) => <Fact key={id ?? 'none'} label={t('accountPerMonth', { name: accountName(id) })} value={money(v)} />)
+            : null}
         </dl>
         {onEdit && pocket.categories.length > 0 && (
           <button
@@ -166,37 +215,11 @@ function ListView({ data, onEdit, onAdd }: { data: BillsPage; onEdit?: (b: Param
           <span className="text-right">{t('amount')}</span>
           <span className="text-right">{t('colNext')}</span>
         </div>
-        {data.bills.map((b) => (
-          <button
-            key={b.id}
-            type="button"
-            disabled={!onEdit}
-            onClick={() => onEdit?.(b)}
-            className={cn(
-              listCols,
-              'group -mx-2 border-t border-board-line px-2 py-3 text-left transition-colors enabled:hover:bg-flap disabled:cursor-default',
-            )}
-          >
-            <span className="flex min-w-0 items-center gap-3">
-              <CategoryGlyph name={pocket.categories.find((c) => c.id === b.categoryId)?.name ?? ''} className="size-7" />
-              <span className="grid min-w-0">
-                <span className="truncate text-[16px] font-medium">{b.name}</span>
-                <span className="truncate text-[12px] text-on-board-2">
-                  {/* The phone has no Repeats column, so the day rides along here. */}
-                  <span className="lg:hidden">
-                    {b.repeat === 'yearly' ? yearlyOn(b) : b.day === 31 ? t('lastDay') : ordinal(locale, b.day)} ·{' '}
-                  </span>
-                  {pocket.categories.find((c) => c.id === b.categoryId)?.name}
-                </span>
-              </span>
-            </span>
-            <span className="caps hidden text-[12px] text-on-board-2 lg:block">{when(b)}</span>
-            <span className="text-right font-board text-[17px] font-semibold">
-              {b.amount !== null ? money(b.amount) : <span className="text-[13px] text-on-board-2">{t('varies')}</span>}
-            </span>
-            <span className="caps text-right text-[12px] text-on-board-2">{next(b)}</span>
-          </button>
-        ))}
+        {active.map(row)}
+        {ended.length > 0 && (
+          <h3 className="caps mt-4 border-t border-board-line pt-3 pb-1 text-[12px] text-on-board-2">{t('endedBills')}</h3>
+        )}
+        {ended.map(row)}
       </Board>
     </div>
   )

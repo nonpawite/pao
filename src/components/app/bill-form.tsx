@@ -9,14 +9,15 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '#/compone
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { nextDue } from '#/lib/bills'
+import { prefill, searchServices } from '#/lib/services'
+import type { Prefill } from '#/lib/services'
 import { ordinal } from '#/lib/i18n'
 import type { Locale, MessageKey } from '#/lib/i18n'
 import { parseAmount, typedAmount } from '#/lib/money'
 import { cn } from '#/lib/utils'
-import { deleteBill, saveBill } from '#/server/bills'
+import { deleteBill, pauseBill, saveBill } from '#/server/bills'
 import { useActivePocket, useMoney, useShell, useT } from './context'
 import { Segmented, glyphFor } from './kit'
-import { Picker } from './picker'
 import { useFieldErrors } from './welcome'
 
 export type BillDraft = {
@@ -26,9 +27,14 @@ export type BillDraft = {
   varies: boolean
   categoryId: string | null
   bankAccountId: string | null
-  repeat: 'monthly' | 'yearly'
-  day: number
-  month: number
+  unit: 'week' | 'month' | 'year'
+  every: string
+  firstDue: string
+  trial: boolean
+  ends: 'never' | 'after' | 'on'
+  endsAfter: string
+  endsOn: string
+  paused: boolean
 }
 
 type SavedBill = {
@@ -37,9 +43,13 @@ type SavedBill = {
   amount: number | null
   categoryId: string | null
   bankAccountId: string | null
-  repeat: 'monthly' | 'yearly'
-  day: number
-  month: number | null
+  unit: 'week' | 'month' | 'year'
+  every: number
+  firstDue: string
+  trial: boolean
+  endsAfter: number | null
+  endsOn: string | null
+  pausedOn: string | null
 }
 
 export const draftFrom = (b: SavedBill): BillDraft => ({
@@ -49,9 +59,14 @@ export const draftFrom = (b: SavedBill): BillDraft => ({
   varies: b.amount === null,
   categoryId: b.categoryId,
   bankAccountId: b.bankAccountId,
-  repeat: b.repeat,
-  day: b.day,
-  month: b.month ?? 1,
+  unit: b.unit,
+  every: String(b.every),
+  firstDue: b.firstDue,
+  trial: b.trial,
+  ends: b.endsAfter ? 'after' : b.endsOn ? 'on' : 'never',
+  endsAfter: b.endsAfter ? String(b.endsAfter) : '',
+  endsOn: b.endsOn ?? '',
+  paused: !!b.pausedOn,
 })
 
 /**
@@ -68,9 +83,14 @@ export function useNewDraft() {
     varies: false,
     categoryId: pocket.categories.find((c) => glyphFor(c.name) === Receipt)?.id ?? null,
     bankAccountId: shell.accounts[0]?.id ?? null,
-    repeat: 'monthly',
-    day: Number(date.slice(8)),
-    month: Number(date.slice(5, 7)),
+    unit: 'month',
+    every: '1',
+    firstDue: date,
+    trial: false,
+    ends: 'never',
+    endsAfter: '',
+    endsOn: '',
+    paused: false,
   })
 }
 
@@ -96,12 +116,13 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
   const shell = useShell()
   const pocket = useActivePocket()
   const router = useRouter()
-  const { t, day, names } = useT()
-  const { dayOptions, dayName } = useDays()
-  const { symbol } = useMoney()
+  const { t, day } = useT()
+  const { symbol, money } = useMoney()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [confirming, setConfirming] = useState(false)
+  // The service picked from the list, for its plan prices.
+  const [service, setService] = useState<Prefill | null>(null)
   const { check, field, message, clear } = useFieldErrors()
   // Each opened bill starts clean.
   const close = () => {
@@ -109,6 +130,7 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
     setError('')
     clear()
     setConfirming(false)
+    setService(null)
   }
 
   // `done` confirms the action in a toast once the dialog closes on it.
@@ -127,7 +149,12 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
     }
   }
 
-  const next = draft && nextDue({ repeat: draft.repeat, day: draft.day, month: draft.repeat === 'yearly' ? draft.month : null }, shell.today)
+  const every = draft ? Number(draft.every) : 0
+  const validEvery = Number.isInteger(every) && every >= 1 && every <= 99
+  const endsAfter = draft?.ends === 'after' ? Number(draft.endsAfter) : null
+  const validEnd = !draft || (draft.ends === 'after' ? Number.isInteger(endsAfter) && endsAfter! >= 1 && endsAfter! <= 999 : draft.ends === 'on' ? !!draft.endsOn && draft.endsOn >= draft.firstDue : true)
+  const endsOn = draft?.ends === 'on' ? draft.endsOn : null
+  const next = draft && validEvery && validEnd && draft.firstDue && nextDue({ unit: draft.unit, every, firstDue: draft.firstDue, endsAfter, endsOn }, shell.today)
 
   return (
     <Dialog open={!!draft} onOpenChange={(o) => !o && close()}>
@@ -143,6 +170,10 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
               // Problems show inside the form, rather than in a toast that leaves.
               const fine = check(e.currentTarget, {
                 name: (v) => (v ? null : t('fieldRequired')),
+                every: () => (validEvery ? null : t('badEvery')),
+                firstDue: (v) => (v ? null : t('fieldRequired')),
+                endsAfter: () => (validEnd ? null : t('badCharges')),
+                endsOn: () => (validEnd ? null : t('badEndsOn')),
                 amount: (v) => (!draft.varies && parseAmount(v, pocket.currency) === null ? t('badAmount') : null),
               })
               if (!fine) return
@@ -157,9 +188,12 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
                     amount,
                     categoryId: draft.categoryId!,
                     bankAccountId: draft.bankAccountId,
-                    repeat: draft.repeat,
-                    day: draft.day,
-                    month: draft.repeat === 'yearly' ? draft.month : null,
+                    unit: draft.unit,
+                    every,
+                    firstDue: draft.firstDue,
+                    trial: draft.trial,
+                    endsAfter,
+                    endsOn,
                   },
                 }),
                 t('billSaved', { name: draft.name.trim() }),
@@ -170,6 +204,38 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
               <Label htmlFor="bill-name">{t('name')}</Label>
               <Input id="bill-name" name="name" required maxLength={40} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} {...field('name')} />
               {message('name')}
+              {/* New bills only: known services as you type. */}
+              {!draft.id && !service && (
+                <div className="flex flex-wrap gap-1.5">
+                  {searchServices(draft.name).map((s) => (
+                    <BillChip
+                      key={s.name}
+                      on={false}
+                      onClick={() => {
+                        const p = prefill(s, pocket.currency)
+                        setService(p)
+                        const plan = p.plans[0]
+                        setDraft({ ...draft, name: p.name, unit: plan?.unit ?? p.unit, every: '1', ...(plan && { amount: String(plan.amount / 100), varies: false }) })
+                      }}
+                    >
+                      {s.name}
+                    </BillChip>
+                  ))}
+                </div>
+              )}
+              {service && service.plans.length > 1 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {service.plans.map((p) => (
+                    <BillChip
+                      key={p.name}
+                      on={draft.amount === String(p.amount / 100) && draft.unit === p.unit}
+                      onClick={() => setDraft({ ...draft, amount: String(p.amount / 100), unit: p.unit, varies: false })}
+                    >
+                      {p.name} · {money(p.amount)}
+                    </BillChip>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="bill-amount">{t('amount')}</Label>
@@ -223,44 +289,92 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
             <div className="grid gap-2">
               <span className="caps text-[12px] text-ink-2">{t('repeats')}</span>
               <div className="flex flex-wrap items-center gap-2">
+                <label htmlFor="bill-every" className="caps text-[11px] text-ink-2">
+                  {t('every')}
+                </label>
+                <Input
+                  id="bill-every"
+                  name="every"
+                  inputMode="numeric"
+                  className="w-16"
+                  value={draft.every}
+                  onChange={(e) => setDraft({ ...draft, every: e.target.value.replace(/\D/g, '').slice(0, 2) })}
+                  {...field('every')}
+                />
                 <Segmented
                   label={t('repeats')}
-                  value={draft.repeat}
-                  onChange={(v) => setDraft({ ...draft, repeat: v })}
+                  value={draft.unit}
+                  onChange={(v) => setDraft({ ...draft, unit: v })}
                   options={[
-                    { value: 'monthly', label: t('monthly') },
-                    { value: 'yearly', label: t('yearly') },
+                    { value: 'week', label: t('weeks') },
+                    { value: 'month', label: t('months') },
+                    { value: 'year', label: t('years') },
                   ]}
-                  className="w-44"
+                  className="w-56"
                 />
-                {/* "on the 25th Oct" is one phrase: narrow pickers keep it beside the choice in the dialog, and on a
-                    phone it wraps whole, so the month never sits alone on a line. */}
-                <div className="flex items-center gap-2">
-                  <label htmlFor="bill-day" className="caps text-[11px] text-ink-2">
-                    {t('onThe')}
-                  </label>
-                  <Picker
-                    id="bill-day"
-                    label={t('onThe')}
-                    value={draft.day}
-                    options={dayOptions}
-                    columns={7}
-                    display={dayName(draft.day)}
-                    onChange={(d) => setDraft({ ...draft, day: d })}
-                    className={cn(pickerClass, 'min-w-20')}
-                  />
-                  {draft.repeat === 'yearly' && (
-                    <Picker
-                      label={t('month')}
-                      value={draft.month}
-                      options={names.months.map((m, i) => ({ value: i + 1, label: m }))}
-                      columns={4}
-                      onChange={(m) => setDraft({ ...draft, month: m })}
-                      className={cn(pickerClass, 'min-w-20')}
-                    />
-                  )}
-                </div>
               </div>
+              {message('every')}
+              <div className="grid gap-1.5">
+                <Label htmlFor="bill-first-due">{draft.trial ? t('trialEnds') : t('firstDue')}</Label>
+                {/* ponytail: native date input; its day of the month carries over, and the 31st means a month's last day. */}
+                <Input
+                  id="bill-first-due"
+                  name="firstDue"
+                  type="date"
+                  required
+                  className={cn(pickerClass, 'w-44')}
+                  value={draft.firstDue}
+                  onChange={(e) => setDraft({ ...draft, firstDue: e.target.value })}
+                  {...field('firstDue')}
+                />
+                {message('firstDue')}
+              </div>
+              <BillChip on={draft.trial} onClick={() => setDraft({ ...draft, trial: !draft.trial })} className="justify-self-start">
+                {t('freeTrial')}
+              </BillChip>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="caps text-[11px] text-ink-2">{t('ends')}</span>
+                <Segmented
+                  label={t('ends')}
+                  value={draft.ends}
+                  onChange={(v) => setDraft({ ...draft, ends: v })}
+                  options={[
+                    { value: 'never', label: t('endsNever') },
+                    { value: 'after', label: t('endsAfterLabel') },
+                    { value: 'on', label: t('endsOnLabel') },
+                  ]}
+                  className="w-56"
+                />
+                {draft.ends === 'after' && (
+                  <span className="flex items-center gap-2">
+                    <Input
+                      id="bill-ends-after"
+                      name="endsAfter"
+                      aria-label={t('charges')}
+                      inputMode="numeric"
+                      className="w-16"
+                      value={draft.endsAfter}
+                      onChange={(e) => setDraft({ ...draft, endsAfter: e.target.value.replace(/\D/g, '').slice(0, 3) })}
+                      {...field('endsAfter')}
+                    />
+                    <span className="text-[13px] text-ink-2">{t('charges')}</span>
+                  </span>
+                )}
+                {draft.ends === 'on' && (
+                  <Input
+                    id="bill-ends-on"
+                    name="endsOn"
+                    type="date"
+                    aria-label={t('endsOnLabel')}
+                    className={cn(pickerClass, 'w-44')}
+                    value={draft.endsOn}
+                    onChange={(e) => setDraft({ ...draft, endsOn: e.target.value })}
+                    {...field('endsOn')}
+                  />
+                )}
+              </div>
+              {message('endsAfter')}
+              {message('endsOn')}
               {next && <span className="caps text-[12px] text-ink-2">{t('nextDueOn', { date: day(next) })}</span>}
             </div>
             {error && (
@@ -288,6 +402,21 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
                 {draft.id && (
                   <Button type="button" variant="ghost" className="text-over-text" disabled={busy} onClick={() => setConfirming(true)}>
                     {t('deleteBill')}
+                  </Button>
+                )}
+                {draft.id && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={busy}
+                    onClick={() =>
+                      void run(
+                        () => pauseBill({ data: { pocketId: pocket.id, id: draft.id!, paused: !draft.paused } }),
+                        t(draft.paused ? 'billResumed' : 'billPaused', { name: draft.name.trim() }),
+                      )
+                    }
+                  >
+                    {draft.paused ? t('resumeBill') : t('pauseBill')}
                   </Button>
                 )}
                 <Button type="submit" className="ml-auto" disabled={busy}>
