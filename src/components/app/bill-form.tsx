@@ -1,5 +1,5 @@
 import { useRouter } from '@tanstack/react-router'
-import { Receipt } from '@phosphor-icons/react'
+import { Check, Receipt } from '@phosphor-icons/react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
@@ -18,6 +18,7 @@ import { cn } from '#/lib/utils'
 import { deleteBill, pauseBill, saveBill } from '#/server/bills'
 import { useActivePocket, useMoney, useShell, useT } from './context'
 import { Segmented, glyphFor } from './kit'
+import { DatePicker } from './picker'
 import { useFieldErrors } from './welcome'
 
 export type BillDraft = {
@@ -116,8 +117,10 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
   const shell = useShell()
   const pocket = useActivePocket()
   const router = useRouter()
-  const { t, day } = useT()
+  const { t, day, names } = useT()
   const { symbol, money } = useMoney()
+  // A due date in another year names its year (a yearly bill, or a trial ending in January).
+  const dateLabel = (d: string) => (d.slice(0, 4) === shell.today.slice(0, 4) ? day(d) : `${day(d)} ${Number(d.slice(0, 4)) + names.yearOffset}`)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [confirming, setConfirming] = useState(false)
@@ -171,7 +174,6 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
               const fine = check(e.currentTarget, {
                 name: (v) => (v ? null : t('fieldRequired')),
                 every: () => (validEvery ? null : t('badEvery')),
-                firstDue: (v) => (v ? null : t('fieldRequired')),
                 endsAfter: () => (validEnd ? null : t('badCharges')),
                 endsOn: () => (validEnd ? null : t('badEndsOn')),
                 amount: (v) => (!draft.varies && parseAmount(v, pocket.currency) === null ? t('badAmount') : null),
@@ -251,7 +253,7 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
                   onChange={(e) => setDraft({ ...draft, amount: typedAmount(e.target.value, true) })}
                   {...field('amount')}
                 />
-                <BillChip on={draft.varies} onClick={() => setDraft({ ...draft, varies: !draft.varies })} className="h-11">
+                <BillChip toggle on={draft.varies} onClick={() => setDraft({ ...draft, varies: !draft.varies })} className="h-11">
                   {t('varies')}
                 </BillChip>
               </div>
@@ -288,91 +290,96 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
             )}
             <div className="grid gap-2">
               <span className="caps text-[12px] text-ink-2">{t('repeats')}</span>
-              <div className="flex flex-wrap items-center gap-2">
-                <label htmlFor="bill-every" className="caps text-[11px] text-ink-2">
-                  {t('every')}
-                </label>
-                <Input
-                  id="bill-every"
-                  name="every"
-                  inputMode="numeric"
-                  className="w-16"
-                  value={draft.every}
-                  onChange={(e) => setDraft({ ...draft, every: e.target.value.replace(/\D/g, '').slice(0, 2) })}
-                  {...field('every')}
-                />
-                <Segmented
-                  label={t('repeats')}
-                  value={draft.unit}
-                  onChange={(v) => setDraft({ ...draft, unit: v })}
-                  options={[
-                    { value: 'week', label: t('weeks') },
-                    { value: 'month', label: t('months') },
-                    { value: 'year', label: t('years') },
-                  ]}
-                  className="w-56"
-                />
+              {/* One phrase a line, each led by its word as "on the" was; from sm the words form a column that keeps the
+                  controls in line, and on a phone each word sits over its controls so the options keep their full names. */}
+              <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:gap-x-3 sm:gap-y-2">
+                <div className="grid gap-1.5 sm:contents">
+                  <label htmlFor="bill-every" className="caps text-[11px] text-ink-2">
+                    {t('every')}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="bill-every"
+                      name="every"
+                      inputMode="numeric"
+                      className={cn(pickerClass, 'w-14 min-w-0 text-center')}
+                      value={draft.every}
+                      onChange={(e) => setDraft({ ...draft, every: e.target.value.replace(/\D/g, '').slice(0, 2) })}
+                      {...field('every')}
+                    />
+                    <Segmented
+                      label={t('repeats')}
+                      value={draft.unit}
+                      onChange={(v) => setDraft({ ...draft, unit: v })}
+                      options={[
+                        { value: 'week', label: t('weeks') },
+                        { value: 'month', label: t('months') },
+                        { value: 'year', label: t('years') },
+                      ]}
+                      className="min-w-0 flex-1 sm:w-56 sm:flex-none"
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-1.5 sm:contents">
+                  <span className="caps text-[11px] text-ink-2">{draft.trial ? t('trialEnds') : t('firstDue')}</span>
+                  {/* A trial's first charge is its end, so the switch sits beside the date it renames, as Varies sits beside the amount. */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <DatePicker
+                      value={draft.firstDue}
+                      onChange={(d) => setDraft({ ...draft, firstDue: d })}
+                      label={draft.trial ? t('trialEnds') : t('firstDue')}
+                      className={cn(pickerClass, 'text-left')}
+                    >
+                      {dateLabel(draft.firstDue)}
+                    </DatePicker>
+                    <BillChip toggle on={draft.trial} onClick={() => setDraft({ ...draft, trial: !draft.trial })} className="h-11 lg:h-10">
+                      {t('freeTrial')}
+                    </BillChip>
+                  </div>
+                </div>
+                <div className="grid gap-1.5 sm:contents">
+                  <span className="caps text-[11px] text-ink-2">{t('ends')}</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Segmented
+                      label={t('ends')}
+                      value={draft.ends}
+                      onChange={(v) => setDraft({ ...draft, ends: v })}
+                      options={[
+                        { value: 'never', label: t('endsNever') },
+                        { value: 'after', label: t('endsAfterLabel') },
+                        { value: 'on', label: t('endsOnLabel') },
+                      ]}
+                      className="min-w-48 flex-1 sm:w-56 sm:flex-none"
+                    />
+                    {draft.ends === 'after' && (
+                      <span className="flex items-center gap-2">
+                        <Input
+                          id="bill-ends-after"
+                          name="endsAfter"
+                          aria-label={t('charges')}
+                          inputMode="numeric"
+                          className={cn(pickerClass, 'w-14 min-w-0 text-center')}
+                          value={draft.endsAfter}
+                          onChange={(e) => setDraft({ ...draft, endsAfter: e.target.value.replace(/\D/g, '').slice(0, 3) })}
+                          {...field('endsAfter')}
+                        />
+                        <span className="text-[13px] text-ink-2">{t('charges')}</span>
+                      </span>
+                    )}
+                    {draft.ends === 'on' && (
+                      <DatePicker
+                        value={draft.endsOn || undefined}
+                        onChange={(d) => setDraft({ ...draft, endsOn: d })}
+                        label={t('endsOnLabel')}
+                        className={cn(pickerClass, 'text-left')}
+                      >
+                        {draft.endsOn ? dateLabel(draft.endsOn) : t('pickDate')}
+                      </DatePicker>
+                    )}
+                  </div>
+                </div>
               </div>
               {message('every')}
-              <div className="grid gap-1.5">
-                <Label htmlFor="bill-first-due">{draft.trial ? t('trialEnds') : t('firstDue')}</Label>
-                {/* ponytail: native date input; its day of the month carries over, and the 31st means a month's last day. */}
-                <Input
-                  id="bill-first-due"
-                  name="firstDue"
-                  type="date"
-                  required
-                  className={cn(pickerClass, 'w-44')}
-                  value={draft.firstDue}
-                  onChange={(e) => setDraft({ ...draft, firstDue: e.target.value })}
-                  {...field('firstDue')}
-                />
-                {message('firstDue')}
-              </div>
-              <BillChip on={draft.trial} onClick={() => setDraft({ ...draft, trial: !draft.trial })} className="justify-self-start">
-                {t('freeTrial')}
-              </BillChip>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="caps text-[11px] text-ink-2">{t('ends')}</span>
-                <Segmented
-                  label={t('ends')}
-                  value={draft.ends}
-                  onChange={(v) => setDraft({ ...draft, ends: v })}
-                  options={[
-                    { value: 'never', label: t('endsNever') },
-                    { value: 'after', label: t('endsAfterLabel') },
-                    { value: 'on', label: t('endsOnLabel') },
-                  ]}
-                  className="w-56"
-                />
-                {draft.ends === 'after' && (
-                  <span className="flex items-center gap-2">
-                    <Input
-                      id="bill-ends-after"
-                      name="endsAfter"
-                      aria-label={t('charges')}
-                      inputMode="numeric"
-                      className="w-16"
-                      value={draft.endsAfter}
-                      onChange={(e) => setDraft({ ...draft, endsAfter: e.target.value.replace(/\D/g, '').slice(0, 3) })}
-                      {...field('endsAfter')}
-                    />
-                    <span className="text-[13px] text-ink-2">{t('charges')}</span>
-                  </span>
-                )}
-                {draft.ends === 'on' && (
-                  <Input
-                    id="bill-ends-on"
-                    name="endsOn"
-                    type="date"
-                    aria-label={t('endsOnLabel')}
-                    className={cn(pickerClass, 'w-44')}
-                    value={draft.endsOn}
-                    onChange={(e) => setDraft({ ...draft, endsOn: e.target.value })}
-                    {...field('endsOn')}
-                  />
-                )}
-              </div>
               {message('endsAfter')}
               {message('endsOn')}
               {next && <span className="caps text-[12px] text-ink-2">{t('nextDueOn', { date: day(next) })}</span>}
@@ -404,24 +411,27 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
                     {t('deleteBill')}
                   </Button>
                 )}
-                {draft.id && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={busy}
-                    onClick={() =>
-                      void run(
-                        () => pauseBill({ data: { pocketId: pocket.id, id: draft.id!, paused: !draft.paused } }),
-                        t(draft.paused ? 'billResumed' : 'billPaused', { name: draft.name.trim() }),
-                      )
-                    }
-                  >
-                    {draft.paused ? t('resumeBill') : t('pauseBill')}
+                {/* Pause can be undone, so it stays quiet beside Save, away from Delete. */}
+                <div className="ml-auto flex gap-2">
+                  {draft.id && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={busy}
+                      onClick={() =>
+                        void run(
+                          () => pauseBill({ data: { pocketId: pocket.id, id: draft.id!, paused: !draft.paused } }),
+                          t(draft.paused ? 'billResumed' : 'billPaused', { name: draft.name.trim() }),
+                        )
+                      }
+                    >
+                      {draft.paused ? t('resumeBill') : t('pauseBill')}
+                    </Button>
+                  )}
+                  <Button type="submit" disabled={busy}>
+                    {t('saveBill')}
                   </Button>
-                )}
-                <Button type="submit" className="ml-auto" disabled={busy}>
-                  {t('saveBill')}
-                </Button>
+                </div>
               </div>
             )}
           </form>
@@ -431,18 +441,20 @@ export function BillForm({ draft, setDraft }: { draft: BillDraft | null; setDraf
   )
 }
 
-function BillChip({ on, onClick, className, children }: { on: boolean; onClick: () => void; className?: string; children: ReactNode }) {
+/** A choice fills ink when picked; a `toggle` beside a field (Varies, Free trial) gets an ink edge and a check instead, so it never reads as Save. */
+function BillChip({ on, onClick, className, children, toggle }: { on: boolean; onClick: () => void; className?: string; children: ReactNode; toggle?: boolean }) {
   return (
     <button
       type="button"
       aria-pressed={on}
       onClick={onClick}
       className={cn(
-        'inline-flex h-9 shrink-0 items-center rounded-sm border border-ink/25 px-3 text-[14px] whitespace-nowrap transition-colors hover:bg-plate',
-        on && 'border-ink bg-ink text-ground hover:bg-ink',
+        'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-sm border border-ink/25 px-3 text-[14px] whitespace-nowrap transition-colors hover:bg-plate',
+        on && (toggle ? 'border-ink' : 'border-ink bg-ink text-ground hover:bg-ink'),
         className,
       )}
     >
+      {toggle && on && <Check aria-hidden weight="bold" className="size-3.5" />}
       {children}
     </button>
   )
