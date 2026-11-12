@@ -61,9 +61,10 @@ export function nextDue(s: Schedule, today: ISODate): ISODate | null {
  */
 export function toSchedule(r: { repeat: 'monthly' | 'yearly'; day: number; month: number | null }, since: ISODate): Schedule {
   let { y, m } = parts(since)
-  // A yearly "31 Feb" can never fit; it meant the month's last day, at most the 29th.
-  const day = r.repeat === 'yearly' ? Math.min(r.day, daysInMonth(2024, r.month!)) : r.day
   for (;;) {
+    // A yearly "31 Feb" can never fit; it meant that year's last day of the month.
+    // ponytail: firstDue keeps that day, so a "31 Feb" starting on 28 Feb stays on the 28th in leap years.
+    const day = r.repeat === 'yearly' ? Math.min(r.day, daysInMonth(y, m)) : r.day
     const due = iso(y, m, day)
     if (day <= daysInMonth(y, m) && due >= since && (r.repeat === 'monthly' || m === r.month))
       return { unit: r.repeat === 'monthly' ? 'month' : 'year', every: 1, firstDue: due }

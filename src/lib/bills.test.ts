@@ -101,7 +101,8 @@ test('an old monthly or yearly bill becomes a schedule from its first due date o
 })
 
 test('an old yearly bill past its month end becomes that month\'s last day', () => {
-  assert.deepEqual(toSchedule({ repeat: 'yearly', day: 31, month: 2 }, '2026-10-18'), every('year', 1, '2028-02-29'))
+  assert.deepEqual(toSchedule({ repeat: 'yearly', day: 31, month: 2 }, '2026-10-18'), every('year', 1, '2027-02-28'))
+  assert.deepEqual(toSchedule({ repeat: 'yearly', day: 29, month: 2 }, '2027-06-01'), every('year', 1, '2028-02-29'))
 })
 
 test('a schedule is due 52 times a year weekly, 12 monthly, and fewer when every N', () => {
