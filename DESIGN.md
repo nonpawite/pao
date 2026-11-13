@@ -318,12 +318,13 @@ Plain and ink-led.
 - **Outline:** strong-rule border, transparent; hover fills plate.
 - **Secondary:** plate fill; hover steps to the hairline tone.
 - **Ghost:** no fill until hover, then plate.
-- **Focus:** 2px ink outline, 2px offset, on every interactive element. A field hidden over a visual passes its focus to that visual: the date input's ring goes to its chip, and the typed amount shows a 2px ink line under its flap tiles instead of a box. The add sheet's note field, which sits bare on the board, shows focus the same way, a 2px ink line under its text. Closing a dialog or sheet returns focus to whatever opened it; the phone sheet takes focus as it opens.
+- **Focus:** 2px ink outline, 2px offset, on every interactive element. A field hidden over a visual passes its focus to that visual: the date input's ring goes to its chip, and the typed amount shows a 2px ink line under its flap tiles instead of a box. The add sheet's note field, which sits bare on the board, shows focus the same way, a 2px ink line under its text. Closing a dialog or sheet returns focus to whatever opened it; the phone sheet takes focus as it opens, and an existing bill's dialog opens with focus on the dialog itself, so nothing is selected before the member chooses what to change.
 - **The add button:** on desktop a full-width ink bar in the sidebar foot with a `N` key hint; on phone a 44px ink square (8px corners) centred in the tab bar with a bold plus.
 
 ### Chips
 - **Pocket tabs (phone):** outlined pills, 6px corners, hairline border, ink-2 text with the pocket's square chip; the active pocket has an ink border and ink text, not a fill.
-- **Choice chips (add sheet: bills, links):** 25% ink border; the selected chip fills ink with page-colour text.
+- **Choice chips (add sheet: bills, links; bill dialog: service and plan suggestions):** 25% ink border; the selected chip fills ink with page-colour text.
+- **Toggle chips (beside a field: Free trial):** the same 25% ink border off; on, the border turns ink and a bold check leads the word, with no fill, so a toggle never reads as the primary action. A toggle at the end of a ruled field (Varies) drops the border and is a quiet ink-2 text button that turns ink with the same check.
 
 ### Cards / Containers
 - **Corner Style:** 8px.
@@ -338,6 +339,7 @@ Plain and ink-led.
 - **Style:** white fill, 1px border in mark grey (3:1 against the panel, so a field reads as a field), 6px corners, 44px tall, 14px side padding, ink-2 placeholder.
 - **Focus:** border turns ink, plus the global 2px focus outline.
 - **Error / Disabled:** invalid fields take the over-text border, with the problem in a sentence under them, never the browser's validation bubble; disabled drops to 50% opacity.
+- **Ruled figure field:** a form's one amount (the bill's) sits bare on a mark-grey bottom rule instead of a box, in Geist 500 at 40px with the currency sign in ink-2 at 24px before it. On focus the rule turns ink and gains a 1px ink shadow line under it, a 2px ink line in all; invalid turns it over-text.
 - **Search on Spending:** a plate well, 40px tall, no border.
 - **Pickers:** the trigger reads as a field; choices open on a white board with the popover shadow. A long list (currencies) opens on the current choice with a search field on top that matches code or name. Its list scrolls with a 6px thumb in the strong-rule tone on no track, so the bar sits inside the board. Dates never use the browser's own calendar: the date picker opens the same board with ‹ month › on top, weekday initials, and the month's days in the figure face (the weeks' spill-over days quieter, days past the limit faded), the picked day filled ink and today underlined with a short accent line.
 
@@ -373,6 +375,9 @@ A Phosphor outline pictogram picked from the category name, in ink-2, with no ti
 
 ### Bills Calendar
 A month grid of white cells on hairlines. Day numbers in Geist; picked and hovered cells fill plate; late bills in over red; today's date sits in a small accent badge with an ink number; the pocket's cycle start carries a "Payday" label on desktop ("Cycle starts" in a shared pocket) and a short accent line under the date on the phone, where the word does not fit.
+
+### Bill Dialog
+A bill is a few facts, so the dialog shows them as fields, not chip rows. Name (with service and plan suggestions as choice chips while adding); the amount on a ruled figure field with Varies at its end; Category (each option led by its pictogram) and Paid from as two pickers side by side; Repeats as a preset picker (Every week, month, year, Custom) beside the date picker, where Custom opens its own "every N" line with a segmented unit. The rare settings, a free trial and an end, fold into one disclosure row between hairlines: the row's name, then a one-line ink-2 summary of what is set and a caret, unfolding the controls in place (and opening itself when one of them is invalid). A "Next charge … · about … a month" line in ink-2 sits above the footer: ghost Delete on the left, its text aligned to the field column, and on the right a ghost Pause beside the ink Save.
 
 ### Toasts
 Every action that saves something confirms in a toast: a white panel with one hairline (6px corners), a 20px Phosphor icon, then one plain sentence that names what happened ("Weeks now start on Monday", "Main removed"). Success wears a check circle in ok green, failure an x circle in over red with the one shared sentence "That did not go through. Check your connection and try again."; the server's own error text never reaches a toast. Removals carry an Undo action, and Undo confirms too; a removal that can't come back (a pocket member, a passkey) asks first instead. Bottom right on wide screens; at the top on a phone, where the bottom holds the tab bar and the add sheet's Add button. Adding an expense confirms on the line inside the sheet instead.

@@ -30,7 +30,12 @@ export const getBillsPage = createServerFn({ method: 'GET' })
       month,
       today,
       payday: p.cycleStartDay,
-      bills: bills.sort((a, b) => a.next.localeCompare(b.next) || a.name.localeCompare(b.name)),
+      // Every due date still to pay this cycle; a weekly bill can owe several.
+      toPay: bills.reduce((s, b) => s + b.setAside, 0),
+      // One row per bill: its most urgent due date this cycle (pocketBills sorts by urgency).
+      bills: bills
+        .filter((b, i) => bills.findIndex((x) => x.id === b.id) === i)
+        .sort((a, b) => (a.next ?? '9999').localeCompare(b.next ?? '9999') || a.name.localeCompare(b.name)),
       monthBills: monthBills.filter((b) => b.state),
     }
   })
@@ -46,11 +51,15 @@ const billInput = z
     amount: z.number().int().positive().max(maxAmount).nullable(),
     categoryId: z.uuid(),
     bankAccountId: z.uuid().nullable(),
-    repeat: z.enum(['monthly', 'yearly']),
-    day: z.number().int().min(1).max(31),
-    month: z.number().int().min(1).max(12).nullable(),
+    firstDue: isoDate,
+    unit: z.enum(['week', 'month', 'year']),
+    every: z.number().int().min(1).max(99),
+    trial: z.boolean(),
+    endsAfter: z.number().int().min(1).max(999).nullable(),
+    endsOn: isoDate.nullable(),
   })
-  .refine((b) => (b.repeat === 'yearly') === (b.month !== null), 'Yearly bills need a month')
+  .refine((b) => !(b.endsAfter && b.endsOn), 'A bill ends after a number of charges or on a date, not both')
+  .refine((b) => !b.endsOn || b.endsOn >= b.firstDue, 'A bill cannot end before its first due date')
 
 /** Bills are planned money, so like categories only the pocket's owner adds or changes them. */
 export const saveBill = createServerFn({ method: 'POST' })
@@ -80,6 +89,19 @@ export const saveBill = createServerFn({ method: 'POST' })
       .where(and(eq(bill.id, id), eq(bill.pocketId, data.pocketId)))
       .returning({ id: bill.id })
     if (!row) throw new Error('Bill not found')
+  })
+
+/** Pausing stops due dates from today; resuming skips the ones missed meanwhile. Planned money, so owner only. */
+export const pauseBill = createServerFn({ method: 'POST' })
+  .validator(z.object({ pocketId: z.uuid(), id: z.uuid(), paused: z.boolean() }))
+  .handler(async ({ data }) => {
+    const u = await requireUser()
+    await requireOwner(u.id, data.pocketId)
+    const today = todayISO()
+    await db
+      .update(bill)
+      .set(data.paused ? { pausedOn: today } : { pausedOn: null, resumedOn: today })
+      .where(and(eq(bill.id, data.id), eq(bill.pocketId, data.pocketId)))
   })
 
 /** Entries that paid it stay, unlinked. */

@@ -16,6 +16,10 @@ _Avoid_: User (in product copy), customer
 A budget with its own categories, limits, cycle start day and currency. Personal pockets belong to one member; shared pockets are logged into by several.
 _Avoid_: Wallet, budget, account
 
+**Bill**:
+A charge in a pocket that comes back every N weeks, months or years, such as rent, a phone plan or a streaming service. Until it is paid, each due date in the cycle sets its amount aside from what is left. A bill can start with a free trial, be paused, and end after a number of charges or on a date. Paying one logs an entry linked to that due date.
+_Avoid_: Subscription, recurring payment
+
 **Setup**:
 The first-run steps where a new member builds their personal pocket: its currency, cycle start day, categories and limits, plus their bank accounts. A member has no pocket until they finish it.
 _Avoid_: Onboarding, landing page, wizard
