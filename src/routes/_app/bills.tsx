@@ -186,10 +186,15 @@ function ListView({ data, onEdit, onAdd }: { data: BillsPage; onEdit?: (b: Param
         <dl className="grid gap-2 font-board text-[12px] font-semibold">
           <Fact label={t('aYear')} value={money(perYear)} />
           <Fact label={t('toPayCycle')} value={money(toPay)} />
-          {byAccount.length > 1 || (byAccount.length === 1 && byAccount[0][0] !== null)
-            ? byAccount.map(([id, v]) => <Fact key={id ?? 'none'} label={t('accountPerMonth', { name: accountName(id) })} value={money(v)} />)
-            : null}
         </dl>
+        {/* The month's split by account is its own group, so it never reads as more totals. */}
+        {(byAccount.length > 1 || (byAccount.length === 1 && byAccount[0][0] !== null)) && (
+          <dl className="grid gap-2 border-t border-board-line pt-3 font-board text-[12px] font-semibold">
+            {byAccount.map(([id, v]) => (
+              <Fact key={id ?? 'none'} label={t('accountPerMonth', { name: accountName(id) })} value={money(v)} />
+            ))}
+          </dl>
+        )}
         {onEdit && pocket.categories.length > 0 && (
           <button
             type="button"
